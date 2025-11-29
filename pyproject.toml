@@ -1,0 +1,88 @@
+[project]
+name = "django-sio"
+version = "0.1.0"
+description = "SocketIO for Django"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "channels>=4.0",
+    "django>=4.2",
+]
+
+[dependency-groups]
+dev = [
+    "daphne",
+    "docformatter",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-django",
+    "python-socketio[asyncio-client]",
+    "ruff",
+    "selenium",
+    "sphinx",
+    "tox",
+    "tox-uv",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+include = ["sio*"]
+exclude = ["tests*", "node_modules*", "docs*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = [
+  "tests",
+]
+DJANGO_SETTINGS_MODULE = "sample_project.config.settings"
+
+[tool.coverage.run]
+omit = [
+    "tests/*",
+]
+
+[tool.ruff.lint]
+# What to enable
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "I",   # isort (import sorting)
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+  "SIM", # flake8-simplify
+  "RUF", # ruff-specific rules
+]
+exclude = [
+  "tests/sample_project/*",
+  "venv/",
+  ".venv/",
+]
+
+[tool.ruff]
+line-length = 79
+indent-width = 4
+target-version = "py314"
+
+[tool.ruff.lint.isort]
+known-first-party = ["sio", "engineio", "socketio"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+docstring-code-format = true
+
+[tool.docformatter]
+recursive = true          # walk subdirectories
+wrap-summaries = 79       # like line-length
+wrap-descriptions = 79
+pre-summary-newline = true
+make-summary-multi-line = true
+blank = true

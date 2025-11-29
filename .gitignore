@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Django
+*.sqlite3
+
+# Node
+node_modules/
+package-lock.json
+
+# ruff
+.ruff_cache/
+
+# pytest
+.pytest_cache/
+
+# tox
+.tox/
+
+# Coverage
+.coverage
+htmlcov/
