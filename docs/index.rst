@@ -281,6 +281,85 @@ messages over HTTP long-polling and are comfortable with the trade-off in
 request size vs. frequency.
 
 
+Logging and debugging
+---------------------
+
+All logging in ``django-sio`` goes through the standard Django logging
+configuration and uses loggers under the ``"sio"`` namespace:
+
+* ``sio.sio`` – root package imports and version info.
+* ``sio.engineio.*`` – Engine.IO transports, packets and sessions.
+* ``sio.socketio.*`` – Socket.IO protocol, server, namespaces and sockets.
+* ``sio.consumer`` – :class:`SocketIOConsumer` wiring and event dispatch.
+
+To enable logging, configure a ``"sio"`` logger in your Django
+``LOGGING`` settings. For example:
+
+.. code-block:: python
+
+   LOGGING = {
+       "version": 1,
+       "disable_existing_loggers": False,
+       "formatters": {
+           "verbose_sio": {
+               "format": (
+                   "%(asctime)s [%(levelname)s] "
+                   "%(name)s %(pathname)s:%(lineno)d %(funcName)s(): "
+                   "%(message)s"
+               ),
+           },
+       },
+       "handlers": {
+           "console_sio": {
+               "class": "logging.StreamHandler",
+               "formatter": "verbose_sio",
+           },
+       },
+       "loggers": {
+           "sio": {
+               "handlers": ["console_sio"],
+               "level": "DEBUG",   # DEBUG for full protocol tracing
+               "propagate": False,
+           },
+       },
+   }
+
+With this configuration:
+
+* At import time you will see messages such as:
+
+  * ``"sio root package imported"`` with ``version`` and
+    ``socketio_version`` in ``extra``.
+  * ``"engineio package imported"`` with ``ENGINE_IO_VERSION``.
+  * ``"socketio package imported"`` with ``SOCKET_IO_VERSION``.
+
+* At ``DEBUG`` level you get detailed traces for:
+
+  * Engine.IO session lifecycle (creation, destruction, timeout).
+  * HTTP long-polling requests (handshake, GET, POST, payload sizes).
+  * WebSocket connect/upgrade and heartbeat pings/pongs.
+  * Packet parsing/encoding for both Engine.IO and Socket.IO.
+  * Room joins/leaves and room-based broadcasts.
+  * Consumer wiring (connect, disconnect, event handlers) and per-event
+    dispatch, including whether handlers used acks.
+
+For production, you can keep the same handler and raise the level to ``INFO``
+to only see high-level lifecycle events:
+
+.. code-block:: python
+
+   "loggers": {
+       "sio": {
+           "handlers": ["console_sio"],
+           "level": "INFO",
+           "propagate": False,
+       },
+   }
+
+You are free to send these logs to any Django-supported handler, such as
+structured logging (JSON), files, or external aggregators.
+
+
 Architecture overview
 ---------------------
 

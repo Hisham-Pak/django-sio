@@ -1,8 +1,10 @@
+# socketio/server.py
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import itertools
+import logging
 import re
 from typing import Any
 
@@ -22,6 +24,8 @@ from .constants import (
 from .protocol import SocketIOPacket, SocketIOParser, encode_packet_to_eio
 from .socket import NamespaceSocket
 
+logger = logging.getLogger("sio." + __name__)
+
 EventHandler = Callable[
     [NamespaceSocket, list[Any], Callable[..., Awaitable[None]] | None],
     Awaitable[None],
@@ -35,18 +39,27 @@ GROUP_ALLOWED_RE = re.compile(r"[^0-9A-Za-z_\-\.]")
 @dataclass
 class Namespace:
     name: str
-    server: SocketIOServer
+    server: "SocketIOServer"
     listeners: dict[str, EventHandler] = field(default_factory=dict)
     connect_handler: ConnectHandler | None = None
 
     def on(self, event: str) -> Callable[[EventHandler], EventHandler]:
         def decorator(fn: EventHandler) -> EventHandler:
+            logger.debug(
+                "Namespace.on namespace=%s event=%s handler=%r",
+                self.name,
+                event,
+                fn,
+            )
             self.listeners[event] = fn
             return fn
 
         return decorator
 
     def on_connect(self, fn: ConnectHandler) -> ConnectHandler:
+        logger.debug(
+            "Namespace.on_connect namespace=%s handler=%r", self.name, fn
+        )
         self.connect_handler = fn
         return fn
 
@@ -63,9 +76,10 @@ class SocketIOServer(EngineIOApplication):
         self._parsers: dict[str, SocketIOParser] = {}
         self._sockets: dict[tuple[str, str], NamespaceSocket] = {}
         self._next_socket_id = itertools.count(0)
-        self._disconnect_hooks = []
+        self._disconnect_hooks: list[DisconnectHook] = []
 
         self.of(DEFAULT_NAMESPACE)
+        logger.info("SocketIOServer initialised")
 
     # ------------------------------------------------------------------ #
     # Namespaces
@@ -75,6 +89,7 @@ class SocketIOServer(EngineIOApplication):
         if not namespace:
             namespace = DEFAULT_NAMESPACE
         if namespace not in self._namespaces:
+            logger.debug("Creating namespace %s", namespace)
             self._namespaces[namespace] = Namespace(
                 name=namespace, server=self
             )
@@ -85,16 +100,19 @@ class SocketIOServer(EngineIOApplication):
     # ------------------------------------------------------------------ #
 
     def _group_name(self, namespace: str, room: str) -> str:
-        # Make namespace and room safe for Channels group names
         ns = namespace or ""
         ns_safe = GROUP_ALLOWED_RE.sub("_", ns)
         room_safe = GROUP_ALLOWED_RE.sub("_", room)
-
-        # Use only allowed chars in the prefix
         base = f"sio_{ns_safe}_{room_safe}"
-
         # Channels requires length < 100
-        return base[:99]
+        group = base[:99]
+        logger.debug(
+            "Computed Channels group_name namespace=%s room=%s group=%s",
+            namespace,
+            room,
+            group,
+        )
+        return group
 
     # ------------------------------------------------------------------ #
     # High-level broadcast API
@@ -114,6 +132,13 @@ class SocketIOServer(EngineIOApplication):
 
         This mirrors `io.emit` / `io.to(room).emit` on the Node server.
         """
+        logger.debug(
+            "SocketIOServer.emit event=%s room=%s namespace=%s args_count=%d",
+            event,
+            room,
+            namespace,
+            len(args),
+        )
         if room is None:
             # Local broadcast (no channel layer): all sockets in this process
             for (_eio_sid, nsp), sock in list(self._sockets.items()):
@@ -132,14 +157,23 @@ class SocketIOServer(EngineIOApplication):
 
         channel_layer = get_channel_layer()
         if channel_layer is not None:
-            # Broadcast to all consumers registered to this room group
+            logger.debug(
+                "Broadcasting via channel layer group=%s attachments=%d",
+                group,
+                len(attachments),
+            )
             await channel_layer.group_send(
                 group,
                 {
-                    "type": "sio.broadcast",  # handled by consumers
+                    "type": "sio.broadcast",
                     "header": header,
                     "attachments": attachments,
                 },
+            )
+        else:
+            logger.debug(
+                "No channel layer configured, skipping group broadcast for group=%s",
+                group,
             )
 
         # Additionally, send directly to any non-WebSocket sockets in this
@@ -152,13 +186,19 @@ class SocketIOServer(EngineIOApplication):
                 continue
             # If the underlying transport is not websocket, send locally
             if sock.eio._session.transport != "websocket":
+                logger.debug(
+                    "Direct emit to non-WebSocket socket id=%s room=%s",
+                    sock.id,
+                    room,
+                )
                 await sock.emit(event, *args)
 
     # ------------------------------------------------------------------ #
-    # EngineIOApplication hooks (unchanged logic, shortened a bit)
+    # EngineIOApplication hooks
     # ------------------------------------------------------------------ #
 
     async def on_connect(self, eio_socket: EngineIOSocket) -> None:
+        logger.info("SocketIOServer.on_connect sid=%s", eio_socket.sid)
         self._parsers[eio_socket.sid] = SocketIOParser()
 
     async def on_message(
@@ -169,9 +209,17 @@ class SocketIOServer(EngineIOApplication):
     ) -> None:
         parser = self._parsers.get(eio_socket.sid)
         if parser is None:
+            logger.warning(
+                "on_message with no parser sid=%s", eio_socket.sid
+            )
             return
 
         packets = parser.feed_eio_message(data, binary)
+        logger.debug(
+            "on_message sid=%s produced %d Socket.IO packets",
+            eio_socket.sid,
+            len(packets),
+        )
         for pkt in packets:
             await self._handle_sio_packet(eio_socket, pkt)
 
@@ -179,6 +227,7 @@ class SocketIOServer(EngineIOApplication):
         self, eio_socket: EngineIOSocket, reason: str
     ) -> None:
         sid = eio_socket.sid
+        logger.info("SocketIOServer.on_disconnect sid=%s reason=%s", sid, reason)
         for (eio_id, _nsp_name), ns_socket in list(self._sockets.items()):
             if eio_id == sid:
                 await self._on_client_disconnect(
@@ -192,16 +241,13 @@ class SocketIOServer(EngineIOApplication):
 
     def register_disconnect_hook(self, hook: DisconnectHook) -> None:
         """
-        Register a callback that will be invoked whenever a NamespaceSocket is
-        disconnected.
-
-        The hook must be: async def hook(ns_socket, reason: str) -> None
-
+        Register a callback invoked whenever a NamespaceSocket is disconnected.
         """
+        logger.debug("Registered disconnect hook %r", hook)
         self._disconnect_hooks.append(hook)
 
     # ------------------------------------------------------------------ #
-    # Packet dispatch (same as before, trimmed)
+    # Packet dispatch
     # ------------------------------------------------------------------ #
 
     async def _handle_sio_packet(
@@ -211,7 +257,21 @@ class SocketIOServer(EngineIOApplication):
     ) -> None:
         nsp_name = pkt.namespace or DEFAULT_NAMESPACE
         namespace = self._namespaces.get(nsp_name)
+        logger.debug(
+            "_handle_sio_packet sid=%s type=%s nsp=%s id=%s",
+            eio_socket.sid,
+            pkt.type,
+            nsp_name,
+            pkt.id,
+        )
+
         if namespace is None:
+            logger.warning(
+                "Unknown namespace %s for incoming packet type=%s sid=%s",
+                nsp_name,
+                pkt.type,
+                eio_socket.sid,
+            )
             if pkt.type == SIO_CONNECT:
                 await self._send_connect_error(
                     eio_socket, nsp_name, {"message": "Unknown namespace"}
@@ -222,6 +282,9 @@ class SocketIOServer(EngineIOApplication):
         ns_socket = self._sockets.get(key)
 
         if pkt.type == SIO_CONNECT:
+            logger.debug(
+                "SIO_CONNECT received sid=%s nsp=%s", eio_socket.sid, nsp_name
+            )
             if ns_socket is None:
                 ns_socket = await self._create_namespace_socket(
                     eio_socket, namespace, pkt
@@ -232,6 +295,11 @@ class SocketIOServer(EngineIOApplication):
             return
 
         if ns_socket is None:
+            logger.warning(
+                "Non-CONNECT packet before connect sid=%s nsp=%s, closing Engine.IO",
+                eio_socket.sid,
+                nsp_name,
+            )
             await eio_socket.close(reason="missing_connect")
             return
 
@@ -253,8 +321,21 @@ class SocketIOServer(EngineIOApplication):
             id=socket_id,
         )
 
+        logger.debug(
+            "Creating NamespaceSocket sid=%s namespace=%s auth=%s",
+            socket_id,
+            nsp.name,
+            auth_payload,
+        )
+
         if nsp.connect_handler is not None:
             ok = await nsp.connect_handler(ns_socket, auth_payload)
+            logger.debug(
+                "Connect handler result namespace=%s sid=%s ok=%s",
+                nsp.name,
+                socket_id,
+                ok,
+            )
             if not ok:
                 await self._send_connect_error(
                     eio_socket,
@@ -269,6 +350,12 @@ class SocketIOServer(EngineIOApplication):
             data={"sid": socket_id},
         )
         await ns_socket._send_packet(resp)
+        logger.info(
+            "NamespaceSocket connected id=%s namespace=%s eio_sid=%s",
+            socket_id,
+            nsp.name,
+            eio_socket.sid,
+        )
         return ns_socket
 
     async def _send_connect_error(
@@ -277,6 +364,12 @@ class SocketIOServer(EngineIOApplication):
         nsp_name: str,
         obj: dict,
     ) -> None:
+        logger.info(
+            "Sending connect error sid=%s namespace=%s error=%s",
+            eio_socket.sid,
+            nsp_name,
+            obj,
+        )
         pkt = SocketIOPacket(
             type=SIO_CONNECT_ERROR,
             namespace=nsp_name or DEFAULT_NAMESPACE,
@@ -294,10 +387,30 @@ class SocketIOServer(EngineIOApplication):
     ) -> None:
         namespace = self._namespaces.get(socket.namespace)
         if not namespace:
+            logger.warning(
+                "Event for unknown namespace socket.id=%s namespace=%s event=%s",
+                socket.id,
+                socket.namespace,
+                event,
+            )
             return
         handler = namespace.listeners.get(event)
         if handler is None:
+            logger.debug(
+                "No handler for event=%s namespace=%s socket.id=%s",
+                event,
+                socket.namespace,
+                socket.id,
+            )
             return
+        logger.debug(
+            "Dispatching event=%s to handler=%r socket.id=%s namespace=%s ack=%s",
+            event,
+            handler,
+            socket.id,
+            socket.namespace,
+            ack_cb is not None,
+        )
         await handler(socket, args, ack_cb)
 
     async def _on_client_disconnect(
@@ -306,11 +419,21 @@ class SocketIOServer(EngineIOApplication):
         reason: str,
     ) -> None:
         key = (ns_socket.eio.sid, ns_socket.namespace)
-        self._sockets.pop(key, None)
+        removed = self._sockets.pop(key, None)
+        logger.info(
+            "NamespaceSocket disconnected id=%s namespace=%s eio_sid=%s reason=%s removed=%s",
+            ns_socket.id,
+            ns_socket.namespace,
+            ns_socket.eio.sid,
+            reason,
+            removed is not None,
+        )
 
-        # Call all registered hooks, for example:
-        # SocketIOConsumer._on_client_disconnect
+        # Call all registered hooks here
         for hook in self._disconnect_hooks:
+            logger.debug(
+                "Calling disconnect hook %r for socket.id=%s", hook, ns_socket.id
+            )
             await hook(ns_socket, reason)
 
         await ns_socket.leave_all()
@@ -320,6 +443,12 @@ class SocketIOServer(EngineIOApplication):
         ns_socket: NamespaceSocket,
         reason: str,
     ) -> None:
+        logger.warning(
+            "Force disconnect for bad packet socket.id=%s namespace=%s reason=%s",
+            ns_socket.id,
+            ns_socket.namespace,
+            reason,
+        )
         await ns_socket.eio.close(reason=reason)
 
 
@@ -329,6 +458,9 @@ _server_singleton: SocketIOServer | None = None
 def get_socketio_server() -> SocketIOServer:
     global _server_singleton
     if _server_singleton is None:
+        logger.info("Creating SocketIOServer singleton")
         _server_singleton = SocketIOServer()
         set_engineio_app(_server_singleton)
+    else:
+        logger.debug("Reusing existing SocketIOServer singleton")
     return _server_singleton

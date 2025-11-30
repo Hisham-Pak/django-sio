@@ -13,7 +13,11 @@ __version__ = f"v{SOCKET_IO_VERSION}"
 logger = logging.getLogger("sio." + __name__)
 logger.info(
     "socketio package imported",
-    extra={"version": __version__},
+    extra={
+        "version": __version__,
+        "socketio_version": SOCKET_IO_VERSION,
+        "default_namespace": DEFAULT_NAMESPACE,
+    },
 )
 
 __all__ = [

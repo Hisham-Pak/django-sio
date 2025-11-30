@@ -65,6 +65,8 @@ async def test_connect_and_event_handler_wiring():
             self.eio = type("Eio", (), {"sid": "sid"})()
             self.namespace = "/simple"
             self.state = {}
+            # needed for logging
+            self.id = "stub#1"
 
     stub = StubSocket()
 
@@ -98,6 +100,7 @@ async def test_disconnect_hook_for_correct_consumer_type():
     # Socket with correct consumer type
     class Socket1:
         def __init__(self):
+            self.id = "socket1"
             self.namespace = "/simple"
             self.state = {"consumer": SimpleConsumer()}
             self.left = False
@@ -110,6 +113,7 @@ async def test_disconnect_hook_for_correct_consumer_type():
     # Socket with wrong consumer type (object)
     class Socket2:
         def __init__(self):
+            self.id = "socket2"
             self.namespace = "/simple"
             self.state = {"consumer": object()}
 
@@ -147,6 +151,7 @@ async def test_event_handler_without_ack_param_still_calls_ack():
         def __init__(self):
             self.namespace = DEFAULT_NAMESPACE
             self.state = {}
+            self.id = "stub#2"
 
     stub = StubSocket()
     ack_called = {}

@@ -53,6 +53,7 @@ async def test_emit_local_vs_room_and_no_channel_layer(monkeypatch):
             self.namespace = "/nsp"
             self.rooms = {"room1"}
             self.calls = []
+            self.id = "dummy-socket"
 
         async def emit(self, event, *args):
             self.calls.append((event, args))
@@ -108,6 +109,7 @@ async def test_engineio_hooks_on_connect_message_disconnect():
             self.eio = eio
             self.namespace = "/"
             self.left = False
+            self.id = "ns-socket"
 
         async def leave_all(self):
             self.left = True
@@ -213,6 +215,7 @@ async def test_dispatch_event_branches():
         (),
         {"namespace": "/nsp"},
     )
+    sock.id = "sock-dispatch"
 
     # no namespace configured
     await server._dispatch_event(sock, "x", [], None)
@@ -242,6 +245,7 @@ async def test_on_client_disconnect_and_force_disconnect():
             self.eio = type("Eio", (), {"sid": "sid"})()
             self.namespace = "/nsp"
             self.left = False
+            self.id = "ns-1"
 
         async def leave_all(self):
             self.left = True
@@ -321,6 +325,7 @@ async def test_emit_room_uses_channel_layer_and_local_polling(monkeypatch):
             self.namespace = "/roomtest"
             self.rooms = {"r1"}
             self.calls = []
+            self.id = "roomtest-sock"
 
         async def emit(self, event, *args):
             self.calls.append((event, args))
@@ -521,6 +526,7 @@ async def test_emit_room_filters_by_namespace_room_and_transport(monkeypatch):
             self.namespace = nsp
             self.rooms = set(rooms)
             self.eio = DummyEio(transport)
+            self.id = f"{nsp}-{transport}"
 
         async def emit(self, event, *args):
             sends.append((self.namespace, frozenset(self.rooms), event, args))

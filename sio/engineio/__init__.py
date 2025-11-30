@@ -10,7 +10,7 @@ __version__ = f"v{ENGINE_IO_VERSION}"
 logger = logging.getLogger("sio." + __name__)
 logger.info(
     "engineio package imported",
-    extra={"version": __version__},
+    extra={"version": __version__, "engineio_version": ENGINE_IO_VERSION},
 )
 
 __all__ = ["EngineIOWebSocketConsumer", "LongPollingConsumer"]

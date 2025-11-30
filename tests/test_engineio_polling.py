@@ -519,6 +519,7 @@ async def test_handle_get_sends_ping_and_body(monkeypatch):
 
     class Sess:
         def __init__(self):
+            self.sid = "sid-get"
             self.active_get = False
             self.closed = False
             self.transport = TRANSPORT_POLLING
@@ -572,10 +573,12 @@ async def test_handle_get_without_ping_and_empty_payload():
 
     class Sess:
         def __init__(self):
+            self.sid = "sid-get"
             self.active_get = False
             self.closed = False
             self.transport = TRANSPORT_POLLING
             self.enqueued = []
+            self.mark_ping_called = False
 
         def should_send_ping(self):
             return False

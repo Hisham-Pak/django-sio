@@ -174,8 +174,9 @@ class DummySocket:
     EngineIOApplication.on_message asks the socket to send.
 
     """
-
     def __init__(self) -> None:
+        # needed because logging uses socket.sid
+        self.sid = "dummy-sid"
         self.sent: list[object] = []
 
     async def send(self, data):

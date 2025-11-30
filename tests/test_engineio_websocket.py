@@ -970,6 +970,7 @@ async def test_ws_receive_flushes_http_queue_on_upgrade(monkeypatch):
     # --- Dummy session that mimics just enough of EngineIOSession ---
     class DummySession:
         def __init__(self):
+            self.sid = "sid-upgrade-dummy"
             self.closed = False
             self.websocket = None
             self.transport = "polling"

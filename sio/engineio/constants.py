@@ -1,12 +1,11 @@
 # engineio/constants.py
-
-ENGINE_IO_VERSION = "4"
-
-# --------------------------------------------------------------------------- #
-# Django-backed configuration
-# --------------------------------------------------------------------------- #
+import logging
 
 from django.conf import settings as django_settings  # type: ignore
+
+logger = logging.getLogger("sio." + __name__)
+
+ENGINE_IO_VERSION = "4"
 
 
 def _get_setting(name: str, default: int) -> int:
@@ -18,25 +17,43 @@ def _get_setting(name: str, default: int) -> int:
     the hard-coded defaults.
     """
     if django_settings is None:
+        logger.debug(
+            "Django settings unavailable, using default for %s=%s",
+            name,
+            default,
+        )
         return default
 
-    # settings.configured may not exist on very old Djangos, so be defensive
     configured = getattr(django_settings, "configured", True)
     if not configured:
+        logger.debug(
+            "Django settings not configured, using default for %s=%s",
+            name,
+            default,
+        )
         return default
 
-    return getattr(django_settings, name, default)
+    value = getattr(django_settings, name, default)
+    logger.debug(
+        "Engine.IO setting %s=%s (default=%s)", name, value, default
+    )
+    return value
 
 
 # Default config (can be overridden in Django settings)
-# e.g. in settings.py:
-#   SIO_ENGINEIO_PING_INTERVAL_MS = 15_000
-#   SIO_ENGINEIO_PING_TIMEOUT_MS = 10_000
-#   SIO_ENGINEIO_MAX_PAYLOAD_BYTES = 2_000_000
-
 PING_INTERVAL_MS = _get_setting("SIO_ENGINEIO_PING_INTERVAL_MS", 25_000)
 PING_TIMEOUT_MS = _get_setting("SIO_ENGINEIO_PING_TIMEOUT_MS", 20_000)
 MAX_PAYLOAD_BYTES = _get_setting("SIO_ENGINEIO_MAX_PAYLOAD_BYTES", 1_000_000)
+
+logger.info(
+    "Engine.IO constants initialised",
+    extra={
+        "engineio_version": ENGINE_IO_VERSION,
+        "ping_interval_ms": PING_INTERVAL_MS,
+        "ping_timeout_ms": PING_TIMEOUT_MS,
+        "max_payload_bytes": MAX_PAYLOAD_BYTES,
+    },
+)
 
 # Transports
 TRANSPORT_POLLING = "polling"
