@@ -9,7 +9,7 @@ class MainSocketIOConsumer(SocketIOConsumer):
 
     async def connect(self, socket: NamespaceSocket, auth: Any) -> bool:
         # Equivalent to:
-        #   socket.emit("auth", socket.handshake.auth);
+        #   socket.emit("auth", socket.handshake.auth);z
         await socket.emit("auth", auth)
         return True  # allow the connection
 

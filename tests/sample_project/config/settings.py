@@ -98,6 +98,10 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# SIO
+SIO_ENGINEIO_PING_INTERVAL_MS = 300
+SIO_ENGINEIO_PING_TIMEOUT_MS = 200
+SIO_ENGINEIO_MAX_PAYLOAD_BYTES = 2_000_000
 
 # Turn logging on to see server logs on why tests might be failing
 

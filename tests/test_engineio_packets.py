@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import base64
 import json
+from importlib import reload
 
 import pytest
+from django.test import override_settings
 
 from sio.engineio.constants import RECORD_SEPARATOR
 from sio.engineio.packets import (
@@ -112,3 +114,58 @@ def test_decode_ws_binary_frame_roundtrip_and_error():
 
     with pytest.raises(ValueError):
         decode_ws_binary_frame(b"")
+
+
+def test_encode_open_packet_uses_django_settings_defaults():
+    """
+    When Django settings define SIO_ENGINEIO_* values, encode_open_packet()
+    called *without* explicit timing/payload args should advertise those
+    values in the open packet.
+
+    We use override_settings as a context manager and reload the modules
+    inside that context so that:
+
+      - engineio.constants re-reads Django settings
+      - engineio.packets recomputes its default argument values
+
+    Then we reload them again after the context to restore the original
+    defaults for the rest of the test suite.
+    """
+    from sio.engineio import constants as const_mod
+    from sio.engineio import packets as packets_mod
+
+    # First, make sure we're starting from a clean baseline
+    reload(const_mod)
+    reload(packets_mod)
+
+    with override_settings(
+        SIO_ENGINEIO_PING_INTERVAL_MS=10,
+        SIO_ENGINEIO_PING_TIMEOUT_MS=20,
+        SIO_ENGINEIO_MAX_PAYLOAD_BYTES=42,
+    ):
+        # Re-evaluate constants and encode_open_packet defaults with the
+        # overridden settings applied.
+        reload(const_mod)
+        reload(packets_mod)
+
+        pkt = packets_mod.encode_open_packet(
+            sid="abc",
+            upgrades=["websocket"],
+            # no explicit ping_interval_ms / ping_timeout_ms / max_payload
+        )
+        assert pkt.startswith("0")
+        payload = json.loads(pkt[1:])
+
+        assert payload == {
+            "sid": "abc",
+            "upgrades": ["websocket"],
+            "pingInterval": 10,
+            "pingTimeout": 20,
+            "maxPayload": 42,
+        }
+
+    # After leaving override_settings, Django settings are back to their
+    # original values. Reload modules again so other tests see the default
+    # constants.
+    reload(const_mod)
+    reload(packets_mod)
