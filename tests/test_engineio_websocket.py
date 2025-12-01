@@ -388,6 +388,7 @@ async def test_ws_connect_upgrade_existing_websocket(monkeypatch):
             self.sid = "sid-ws-existing"
             self.transport = "polling"
             self.closed = False
+            # Pretend there is already a different websocket bound
             self.websocket = object()
 
         def is_timed_out(self):
@@ -406,17 +407,26 @@ async def test_ws_connect_upgrade_existing_websocket(monkeypatch):
             "ascii"
         ),
     }
-    closed = {}
+
+    accepted: dict[str, bool] = {}
+    closed: dict[str, bool] = {}
+
+    async def fake_accept():
+        accepted["called"] = True
 
     async def fake_close(code=None):
         closed["called"] = True
 
+    # Use our fake session + stubs
     monkeypatch.setattr(ws_mod, "get_session", fake_get_session)
-    consumer.close = fake_close  # type: ignore[assignment]
+    consumer.accept = fake_accept  # type: ignore[assignment]
+    consumer.close = fake_close    # type: ignore[assignment]
 
     await consumer.connect()
+
+    # The new websocket must be accepted then closed, but must NOT replace the existing one
+    assert accepted.get("called") is True
     assert closed.get("called") is True
-    # session should still be untouched (no websocket reassignment)
     assert session.websocket is not consumer
 
 

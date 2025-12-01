@@ -94,8 +94,13 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
             if session.websocket is not None and session.websocket is not self:
                 logger.warning(
                     "WebSocket upgrade denied, existing websocket for sid=%s",
-                    sid,
+                    session.sid,
                 )
+                # Accept the WebSocket and then immediately close it so that
+                # the client observes a normal WebSocket close (no HTTP 403),
+                # which matches the Engine.IO test suite expectation that a
+                # second WS with the same sid is simply "ignored".
+                await self.accept()
                 await self.close()
                 return
 

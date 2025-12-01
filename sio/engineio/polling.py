@@ -215,8 +215,10 @@ class LongPollingConsumer(AsyncHttpConsumer):
                 session.mark_ping_sent()
             else:
                 # Schedule a ping during this long poll when the interval elapses
+                # since the last ping was sent.
                 now = time.time()
-                elapsed_ms = now * 1000
+                last_ping = getattr(session, "last_ping_sent", now)
+                elapsed_ms = int((now - last_ping) * 1000)
                 remaining_ms = max(0, PING_INTERVAL_MS - elapsed_ms)
                 logger.debug(
                     "Scheduling delayed ping sid=%s remaining_ms=%d",

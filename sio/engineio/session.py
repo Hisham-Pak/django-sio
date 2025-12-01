@@ -50,7 +50,7 @@ class EngineIOSession:
         # Heartbeat tracking
         now = time.time()
         self.last_seen: float = now
-        self.last_ping_sent: float = 0.0
+        self.last_ping_sent: float = now
         self.last_pong: float = now
 
         # Closed flag (logical session closed)
@@ -97,9 +97,11 @@ class EngineIOSession:
             logger.debug("is_timed_out -> True (closed) sid=%s", self.sid)
             return True
         now = time.time()
-        timed_out = (now - self.last_pong) * 1000 > 2 * (
-            PING_INTERVAL_MS + PING_TIMEOUT_MS
-        )
+        elapsed_ms = (now - self.last_pong) * 1000
+        timeout_ms = PING_INTERVAL_MS + PING_TIMEOUT_MS
+
+        # Timed out as soon as elapsed > pingInterval + pingTimeout
+        timed_out = elapsed_ms > timeout_ms
         logger.debug(
             "is_timed_out sid=%s timed_out=%s last_pong=%f now=%f",
             self.sid,
@@ -141,7 +143,7 @@ class EngineIOSession:
         )
         try:
             first = await asyncio.wait_for(self._queue.get(), timeout=timeout)
-        except TimeoutError:
+        except asyncio.TimeoutError:
             logger.debug("http_next_payload timeout sid=%s", self.sid)
             return b""
 
