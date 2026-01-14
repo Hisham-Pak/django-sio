@@ -383,8 +383,8 @@ async def test_engineio_websocket_sio_broadcast_sends_correct_frames():
 
     # one text frame '4' + header
     assert sent_text == ['42/chat,["evt",{"x":1}]']
-    # two binary frames '4' + each blob
-    assert sent_bytes == [b"4\x01\x02", b"4\x03"]
+    # two binary frames each blob
+    assert sent_bytes == [b"\x01\x02", b"\x03"]
 
 
 class DummyEioSocket:

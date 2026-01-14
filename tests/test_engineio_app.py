@@ -81,7 +81,7 @@ async def test_engineio_socket_send_websocket_text_and_binary():
     await sock.send(b"\x01\x02")
 
     assert ws.sent_text == ["4hello"]
-    assert ws.sent_bytes == [b"4\x01\x02"]
+    assert ws.sent_bytes == [b"\x01\x02"]
 
 
 @pytest.mark.asyncio

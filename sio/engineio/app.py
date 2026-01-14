@@ -72,14 +72,13 @@ class EngineIOSocket:
         )
 
         if session.transport == "websocket" and session.websocket is not None:
-            # WebSocket binary frame: <type-byte><binary-data>
-            frame = b"4" + data
+            # WebSocket binary frame: raw payload only (Socket.IO attachments)
             logger.debug(
                 "Sending Engine.IO binary message over WebSocket sid=%s bytes=%d",
                 session.sid,
-                len(frame),
+                len(data),
             )
-            await session.websocket.send(bytes_data=frame)
+            await session.websocket.send(bytes_data=data)
         else:
             # HTTP long-polling: base64 + 'b' prefix, per spec.
             segment = encode_http_binary_message(data)

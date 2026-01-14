@@ -687,9 +687,7 @@ async def test_ws_receive_decode_error_closes(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_ws_receive_ping_probe_text_and_regular_ping_text_and_binary(
-    monkeypatch,
-):
+async def test_ws_receive_ping_probe_and_regular_text_ping():
     """
     - '2probe' → respond with pong '3probe'
     - '2hello' → regular text ping -> '3hello'
@@ -700,29 +698,68 @@ async def test_ws_receive_ping_probe_text_and_regular_ping_text_and_binary(
     consumer.session = session
 
     sent_text = []
-    sent_bin = []
 
     async def fake_send_text_packet(pkt_type: str, data: str = ""):
         sent_text.append((pkt_type, data))
 
-    async def fake_send_binary_packet(pkt_type: str, data: bytes):
-        sent_bin.append((pkt_type, data))
-
     consumer._send_text_packet = fake_send_text_packet  # type: ignore[assignment]
-    consumer._send_binary_packet = fake_send_binary_packet  # type: ignore[assignment]
 
-    # probe
     await consumer.receive(text_data="2probe")
-    # regular text ping
     await consumer.receive(text_data="2hello")
-    # binary ping
-    await consumer.receive(bytes_data=b"2\x01\x02")
 
-    # We should have a pong "probe" and "hello"
     assert ("3", "probe") in sent_text
     assert ("3", "hello") in sent_text
-    # And a binary pong
-    assert ("3", b"\x01\x02") in sent_bin
+
+@pytest.mark.asyncio
+async def test_ws_receive_binary_frame_is_forwarded_as_message(monkeypatch):
+    """
+    With the Socket.IO-compatible WS behavior, *all* WS binary frames are treated
+    as Engine.IO "message" packets (type '4') carrying raw bytes, and forwarded
+    to app.on_message(..., binary=True).
+    """
+
+    class DummyApp:
+        def __init__(self):
+            self.calls = []
+
+        async def on_message(self, socket, data, binary):
+            self.calls.append((socket, data, binary))
+
+        async def on_connect(self, socket):
+            pass
+
+        async def on_disconnect(self, socket, reason):
+            pass
+
+    app = DummyApp()
+
+    def fake_get_engineio_app():
+        return app
+
+    class DummySocket:
+        def __init__(self, sess):
+            self.session = sess
+
+    def fake_get_or_create_socket(sess):
+        return DummySocket(sess)
+
+    consumer = EngineIOWebSocketConsumer()
+    session = EngineIOSession("sid-rx-bin")
+    consumer.session = session
+
+    monkeypatch.setattr(ws_mod, "get_engineio_app", fake_get_engineio_app)
+    monkeypatch.setattr(
+        ws_mod,
+        "get_or_create_socket",
+        fake_get_or_create_socket
+    )
+
+    await consumer.receive(bytes_data=b"2\x01\x02")
+
+    assert len(app.calls) == 1
+    _, data, binary = app.calls[0]
+    assert data == b"2\x01\x02"
+    assert binary is True
 
 
 @pytest.mark.asyncio
@@ -820,7 +857,7 @@ async def test_ws_receive_message_text_and_binary(monkeypatch):
     _, data2, binary2 = app.calls[1]
 
     assert data1 == "hello" and binary1 is False
-    assert data2 == b"\x01\x02" and binary2 is True
+    assert data2 == b"4\x01\x02" and binary2 is True
 
 
 @pytest.mark.asyncio
@@ -912,7 +949,7 @@ async def test_ws_sio_broadcast_sends_header_and_attachments():
     await consumer.sio_broadcast(event)
 
     assert sent_text == ['42/chat,["evt",{"x":1}]']
-    assert sent_bytes == [b"4\x01\x02", b"4\x03"]
+    assert sent_bytes == [b"\x01\x02", b"\x03"]
 
 
 @pytest.mark.asyncio

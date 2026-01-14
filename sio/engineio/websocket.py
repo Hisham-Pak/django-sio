@@ -19,6 +19,7 @@ from .constants import (
     TRANSPORT_WEBSOCKET,
 )
 from .packets import (
+    Packet,
     decode_ws_binary_frame,
     decode_ws_text_frame,
     encode_open_packet,
@@ -252,12 +253,16 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
                 )
                 pkt = decode_ws_text_frame(text_data)
             else:
+                raw = bytes_data or b""
                 logger.debug(
                     "WS binary frame received sid=%s len=%d",
                     self.session.sid,
-                    len(bytes_data or b""),
+                    len(raw),
                 )
-                pkt = decode_ws_binary_frame(bytes_data or b"")
+                # Treat all binary WebSocket frames as Engine.IO "message"
+                # packets with raw payload. Socket.IO will interpret these as
+                # binary attachments for the preceding binary event.
+                pkt = Packet(type="4", data=raw, binary=True)
         except ValueError as e:
             logger.warning(
                 "Invalid WS frame for sid=%s error=%s", self.session.sid, e
@@ -362,4 +367,4 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
 
         # Binary attachments as Engine.IO message (type 4 + raw bytes)
         for blob in attachments:
-            await self.send(bytes_data=b"4" + blob)
+            await self.send(bytes_data=blob)

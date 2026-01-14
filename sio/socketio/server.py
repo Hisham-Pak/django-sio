@@ -402,6 +402,16 @@ class SocketIOServer(EngineIOApplication):
                 socket.namespace,
                 socket.id,
             )
+            # If the client requested an ack, echo the args back so the client
+            # is not left hanging.
+            if ack_cb is not None:
+                logger.debug(
+                    "No handler for event=%s socket.id=%s ns=%s, sending echo ack",
+                    event,
+                    socket.id,
+                    socket.namespace,
+                )
+                await ack_cb(*args)
             return
         logger.debug(
             "Dispatching event=%s to handler=%r socket.id=%s namespace=%s ack=%s",
