@@ -1,3 +1,6 @@
+> [!WARNING]
+> This library/framework is not production ready.
+
 # Django SocketIO (`django-sio`)
 
 Socket.IO for Django, powered by Channels and compatible with the official Socket.IO clients.
