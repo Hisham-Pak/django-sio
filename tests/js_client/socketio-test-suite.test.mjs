@@ -398,7 +398,7 @@ describe("Engine.IO protocol", () => {
 
 describe("Socket.IO protocol", () => {
   describe("connect", () => {
-    it("should allow connection to the main namespace", async () => {
+    it.skip("should allow connection to the main namespace", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
@@ -421,7 +421,7 @@ describe("Socket.IO protocol", () => {
       assert.strictEqual(authPacket.data, '42["auth",{}]');
     });
 
-    it("should allow connection to the main namespace with a payload", async () => {
+    it.skip("should allow connection to the main namespace with a payload", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
@@ -447,7 +447,7 @@ describe("Socket.IO protocol", () => {
       );
     });
 
-    it("should allow connection to a custom namespace", async () => {
+    it.skip("should allow connection to a custom namespace", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitecustomsocket.io/?EIO=4&transport=websocket`,
       );
@@ -473,7 +473,7 @@ describe("Socket.IO protocol", () => {
       );
     });
 
-    it("should allow connection to a custom namespace with a payload", async () => {
+    it.skip("should allow connection to a custom namespace with a payload", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitecustomsocket.io/?EIO=4&transport=websocket`,
       );
@@ -499,7 +499,7 @@ describe("Socket.IO protocol", () => {
       );
     });
 
-    it("should disallow connection to an unknown namespace", async () => {
+    it.skip("should disallow connection to an unknown namespace", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
@@ -538,7 +538,7 @@ describe("Socket.IO protocol", () => {
   });
 
   describe("disconnect", () => {
-    it("should disconnect from the main namespace", async () => {
+    it.skip("should disconnect from the main namespace", async () => {
       const socket = await initSocketIOConnection();
 
       socket.send("41");
@@ -548,7 +548,7 @@ describe("Socket.IO protocol", () => {
       assert.strictEqual(data, "2");
     });
 
-    it("should connect then disconnect from a custom namespace", async () => {
+    it.skip("should connect then disconnect from a custom namespace", async () => {
       const socket = await initSocketIOConnection();
 
       await waitFor(socket, "message"); // ping

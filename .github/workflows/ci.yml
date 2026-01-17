@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    name: Discover tox envs
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Only needed to run `tox -l` reliably
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Build matrix from tox -l
+        id: matrix
+        shell: bash
+        run: |
+          # Get envs from tox itself (source of truth)
+          ENVS=$(uv run tox -l -q | tr '\n' ' ')
+          python - <<'PY'
+          import json, os
+          envs = os.environ["ENVS"].split()
+          # GitHub expects {"include":[{"toxenv":"..."}, ...]}
+          print("matrix=" + json.dumps({"include": [{"toxenv": e} for e in envs]}))
+          PY
+        env:
+          ENVS: ${{ env.ENVS }}
+
+  tox:
+    name: tox -e ${{ matrix.toxenv }}
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Choose Python for tox env
+        id: py
+        shell: bash
+        run: |
+          env="${{ matrix.toxenv }}"
+          if [[ "$env" == py39-* ]]; then echo "python=3.9" >> $GITHUB_OUTPUT; exit 0; fi
+          if [[ "$env" == py310-* ]]; then echo "python=3.10" >> $GITHUB_OUTPUT; exit 0; fi
+          if [[ "$env" == py311-* ]]; then echo "python=3.11" >> $GITHUB_OUTPUT; exit 0; fi
+          if [[ "$env" == py312-* ]]; then echo "python=3.12" >> $GITHUB_OUTPUT; exit 0; fi
+          if [[ "$env" == py313-* ]]; then echo "python=3.13" >> $GITHUB_OUTPUT; exit 0; fi
+          if [[ "$env" == py314-* ]]; then echo "python=3.14" >> $GITHUB_OUTPUT; exit 0; fi
+          # qa / qa-js / others
+          echo "python=3.12" >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ steps.py.outputs.python }}
+
+      # Only needed for js-related tox envs (qa-js, etc.)
+      - uses: actions/setup-node@v4
+        if: ${{ contains(matrix.toxenv, 'js') }}
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: tests/js_client/package-lock.json
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Install JS deps (only for js envs)
+        if: ${{ contains(matrix.toxenv, 'js') }}
+        working-directory: tests/js_client
+        run: npm ci
+
+      - name: Run tox env
+        run: uv run tox -e ${{ matrix.toxenv }}
