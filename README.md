@@ -109,3 +109,12 @@ uv run tox -e py314-djmain -- -sq --run-js
 ### Contributing
 
 Contributions are welcome! Please open issues or pull requests to help improve the package.
+
+## Release
+
+To create a release:
+```bash
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+```
+
