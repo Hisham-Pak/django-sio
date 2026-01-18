@@ -35,16 +35,12 @@ jobs:
         id: matrix
         shell: bash
         run: |
-          # Get envs from tox itself (source of truth)
-          ENVS=$(uv run tox -l -q | tr '\n' ' ')
-          python - <<'PY'
-          import json, os
-          envs = os.environ["ENVS"].split()
-          # GitHub expects {"include":[{"toxenv":"..."}, ...]}
+          ENVS="$(uv run tox -l -q)"
+          python - <<PY >> "$GITHUB_OUTPUT"
+          import json
+          envs = """$ENVS""".split()
           print("matrix=" + json.dumps({"include": [{"toxenv": e} for e in envs]}))
           PY
-        env:
-          ENVS: ${{ env.ENVS }}
 
   tox:
     name: tox -e ${{ matrix.toxenv }}
