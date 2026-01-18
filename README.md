@@ -4,6 +4,7 @@ Socket.IO for Django, powered by Channels and compatible with the official Socke
 
 📖 Documentation: [django-sio.readthedocs.io](https://django-sio.readthedocs.io/)
 🐍 PyPI: [pypi.org/project/django-sio/](https://pypi.org/project/django-sio/)
+🚀 Demo project: [django-sio-chat-demo](https://github.com/hisham-pak/django-sio-chat-demo)
 
 ---
 
