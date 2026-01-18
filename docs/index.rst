@@ -45,9 +45,10 @@ In your Django settings:
 .. code-block:: python
 
    INSTALLED_APPS = [
+       "daphne",          # or 'uvicorn' or other ASGI server
        # ...
        "channels",
-       "sio",  # django-sio
+       "myapp",
    ]
 
    ASGI_APPLICATION = "your_project.config.asgi.application"
@@ -58,12 +59,7 @@ room broadcasting:
 .. code-block:: python
 
    CHANNEL_LAYERS = {
-       "default": {
-           "BACKEND": "channels_redis.core.RedisChannelLayer",
-           "CONFIG": {
-               "hosts": [("127.0.0.1", 6379)],
-           },
-       },
+       "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
    }
 
 
