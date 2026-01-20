@@ -14,6 +14,7 @@ class EngineIOSocket:
     Public API object representing a single Engine.IO connection (session).
 
     This is what Socket.IO implementation will primarily interact with.
+
     """
 
     def __init__(self, session: EngineIOSession):
@@ -74,7 +75,9 @@ class EngineIOSocket:
         if session.transport == "websocket" and session.websocket is not None:
             # WebSocket binary frame: raw payload only (Socket.IO attachments)
             logger.debug(
-                "Sending Engine.IO binary message over WebSocket sid=%s bytes=%d",
+                """
+                Sending Engine.IO binary message over WebSocket sid=%s bytes=%d
+                """,
                 session.sid,
                 len(data),
             )
@@ -83,7 +86,10 @@ class EngineIOSocket:
             # HTTP long-polling: base64 + 'b' prefix, per spec.
             segment = encode_http_binary_message(data)
             logger.debug(
-                "Enqueuing Engine.IO binary message for HTTP polling sid=%s segment_len=%d",
+                """
+                Enqueuing Engine.IO binary message for HTTP polling sid=%s
+                segment_len=%d
+                """,
                 session.sid,
                 len(segment),
             )
@@ -116,6 +122,7 @@ class EngineIOApplication:
     Application callback interface.
 
     Override this to build higher-level protocols (Socket.IO, your own, etc).
+
     """
 
     async def on_connect(self, socket: EngineIOSocket) -> None:
@@ -152,6 +159,7 @@ def set_engineio_app(app: EngineIOApplication) -> None:
     Register a global Engine.IO application instance.
 
     Call this at startup (e.g. in Django AppConfig.ready()).
+
     """
     global _engineio_app
     logger.info("Engine.IO application instance set to %r", app)

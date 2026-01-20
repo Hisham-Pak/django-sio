@@ -30,7 +30,8 @@ def test_engineio_constants_reflect_django_settings():
     """
     import sio.engineio.constants as const_mod
 
-    # Reload so PING_* / MAX_PAYLOAD_BYTES are recomputed with the overridden settings
+    # Reload so PING_* / MAX_PAYLOAD_BYTES are recomputed with the overridden
+    # settings
     reload(const_mod)
 
     assert const_mod.PING_INTERVAL_MS == 1234

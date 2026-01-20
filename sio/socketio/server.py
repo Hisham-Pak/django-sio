@@ -39,7 +39,7 @@ GROUP_ALLOWED_RE = re.compile(r"[^0-9A-Za-z_\-\.]")
 @dataclass
 class Namespace:
     name: str
-    server: "SocketIOServer"
+    server: SocketIOServer
     listeners: dict[str, EventHandler] = field(default_factory=dict)
     connect_handler: ConnectHandler | None = None
 
@@ -172,7 +172,10 @@ class SocketIOServer(EngineIOApplication):
             )
         else:
             logger.debug(
-                "No channel layer configured, skipping group broadcast for group=%s",
+                """
+                No channel layer configured, skipping group broadcast for
+                group=%s
+                """,
                 group,
             )
 
@@ -209,9 +212,7 @@ class SocketIOServer(EngineIOApplication):
     ) -> None:
         parser = self._parsers.get(eio_socket.sid)
         if parser is None:
-            logger.warning(
-                "on_message with no parser sid=%s", eio_socket.sid
-            )
+            logger.warning("on_message with no parser sid=%s", eio_socket.sid)
             return
 
         packets = parser.feed_eio_message(data, binary)
@@ -227,7 +228,9 @@ class SocketIOServer(EngineIOApplication):
         self, eio_socket: EngineIOSocket, reason: str
     ) -> None:
         sid = eio_socket.sid
-        logger.info("SocketIOServer.on_disconnect sid=%s reason=%s", sid, reason)
+        logger.info(
+            "SocketIOServer.on_disconnect sid=%s reason=%s", sid, reason
+        )
         for (eio_id, _nsp_name), ns_socket in list(self._sockets.items()):
             if eio_id == sid:
                 await self._on_client_disconnect(
@@ -296,7 +299,10 @@ class SocketIOServer(EngineIOApplication):
 
         if ns_socket is None:
             logger.warning(
-                "Non-CONNECT packet before connect sid=%s nsp=%s, closing Engine.IO",
+                """
+                Non-CONNECT packet before connect sid=%s nsp=%s, closing
+                Engine.IO
+                """,
                 eio_socket.sid,
                 nsp_name,
             )
@@ -388,7 +394,9 @@ class SocketIOServer(EngineIOApplication):
         namespace = self._namespaces.get(socket.namespace)
         if not namespace:
             logger.warning(
-                "Event for unknown namespace socket.id=%s namespace=%s event=%s",
+                """
+                Event for unknown namespace socket.id=%s namespace=%s event=%s
+                """,
                 socket.id,
                 socket.namespace,
                 event,
@@ -406,7 +414,10 @@ class SocketIOServer(EngineIOApplication):
             # is not left hanging.
             if ack_cb is not None:
                 logger.debug(
-                    "No handler for event=%s socket.id=%s ns=%s, sending echo ack",
+                    """
+                    No handler for event=%s socket.id=%s ns=%s, sending echo
+                    ack
+                    """,
                     event,
                     socket.id,
                     socket.namespace,
@@ -414,7 +425,10 @@ class SocketIOServer(EngineIOApplication):
                 await ack_cb(*args)
             return
         logger.debug(
-            "Dispatching event=%s to handler=%r socket.id=%s namespace=%s ack=%s",
+            """
+            Dispatching event=%s to handler=%r socket.id=%s namespace=%s
+            ack=%s
+            """,
             event,
             handler,
             socket.id,
@@ -431,7 +445,10 @@ class SocketIOServer(EngineIOApplication):
         key = (ns_socket.eio.sid, ns_socket.namespace)
         removed = self._sockets.pop(key, None)
         logger.info(
-            "NamespaceSocket disconnected id=%s namespace=%s eio_sid=%s reason=%s removed=%s",
+            """
+            NamespaceSocket disconnected id=%s namespace=%s eio_sid=%sreason=%s
+            removed=%s
+            """,
             ns_socket.id,
             ns_socket.namespace,
             ns_socket.eio.sid,
@@ -442,7 +459,9 @@ class SocketIOServer(EngineIOApplication):
         # Call all registered hooks here
         for hook in self._disconnect_hooks:
             logger.debug(
-                "Calling disconnect hook %r for socket.id=%s", hook, ns_socket.id
+                "Calling disconnect hook %r for socket.id=%s",
+                hook,
+                ns_socket.id,
             )
             await hook(ns_socket, reason)
 
@@ -454,7 +473,10 @@ class SocketIOServer(EngineIOApplication):
         reason: str,
     ) -> None:
         logger.warning(
-            "Force disconnect for bad packet socket.id=%s namespace=%s reason=%s",
+            """
+            Force disconnect for bad packet socket.id=%s namespace=%s
+            reason=%s
+            """,
             ns_socket.id,
             ns_socket.namespace,
             reason,

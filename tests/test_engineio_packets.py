@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import base64
-import json
 from importlib import reload
+import json
 
-import pytest
 from django.test import override_settings
+import pytest
 
 from sio.engineio.constants import RECORD_SEPARATOR
 from sio.engineio.packets import (
@@ -119,8 +119,8 @@ def test_decode_ws_binary_frame_roundtrip_and_error():
 def test_encode_open_packet_uses_django_settings_defaults():
     """
     When Django settings define SIO_ENGINEIO_* values, encode_open_packet()
-    called *without* explicit timing/payload args should advertise those
-    values in the open packet.
+    called *without* explicit timing/payload args should advertise those values
+    in the open packet.
 
     We use override_settings as a context manager and reload the modules
     inside that context so that:
@@ -130,9 +130,9 @@ def test_encode_open_packet_uses_django_settings_defaults():
 
     Then we reload them again after the context to restore the original
     defaults for the rest of the test suite.
+
     """
-    from sio.engineio import constants as const_mod
-    from sio.engineio import packets as packets_mod
+    from sio.engineio import constants as const_mod, packets as packets_mod
 
     # First, make sure we're starting from a clean baseline
     reload(const_mod)

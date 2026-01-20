@@ -12,9 +12,10 @@ def _get_setting(name: str, default: int) -> int:
     """
     Allow Engine.IO defaults to be overridden from Django settings.
 
-    We look for SIO_ENGINEIO_* keys on django.conf.settings, but only if
-    Django is installed AND configured. Otherwise we silently fall back to
-    the hard-coded defaults.
+    We look for SIO_ENGINEIO_* keys on django.conf.settings, but only if Django
+    is installed AND configured. Otherwise we silently fall back to the hard-
+    coded defaults.
+
     """
     if django_settings is None:
         logger.debug(
@@ -34,9 +35,7 @@ def _get_setting(name: str, default: int) -> int:
         return default
 
     value = getattr(django_settings, name, default)
-    logger.debug(
-        "Engine.IO setting %s=%s (default=%s)", name, value, default
-    )
+    logger.debug("Engine.IO setting %s=%s (default=%s)", name, value, default)
     return value
 
 

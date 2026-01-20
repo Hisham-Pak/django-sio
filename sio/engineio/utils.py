@@ -1,7 +1,7 @@
 # engineio/utils.py
+import logging
 from typing import Any
 from urllib.parse import parse_qs
-import logging
 
 logger = logging.getLogger("sio." + __name__)
 

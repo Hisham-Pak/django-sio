@@ -61,7 +61,9 @@ function assertHasAllKeys(obj, ...keys) {
 }
 
 async function initLongPollingSession() {
-  const response = await fetch(`${URL}/testsuitesocket.io/?EIO=4&transport=polling`);
+  const response = await fetch(
+    `${URL}/testsuitesocket.io/?EIO=4&transport=polling`,
+  );
   const content = await response.text();
   return JSON.parse(content.substring(1)).sid;
 }
@@ -114,7 +116,9 @@ describe("Engine.IO protocol", () => {
       });
 
       it("should fail with an invalid 'EIO' query parameter", async () => {
-        const response = await fetch(`${URL}/testsuitesocket.io/?transport=polling`);
+        const response = await fetch(
+          `${URL}/testsuitesocket.io/?transport=polling`,
+        );
 
         assert.strictEqual(response.status, 400);
 
@@ -130,7 +134,9 @@ describe("Engine.IO protocol", () => {
 
         assert.strictEqual(response.status, 400);
 
-        const response2 = await fetch(`${URL}/testsuitesocket.io/?EIO=4&transport=abc`);
+        const response2 = await fetch(
+          `${URL}/testsuitesocket.io/?EIO=4&transport=abc`,
+        );
 
         assert.strictEqual(response2.status, 400);
       });
@@ -198,9 +204,7 @@ describe("Engine.IO protocol", () => {
           `${WS_URL}/testsuitesocket.io/?EIO=abc&transport=websocket`,
         );
 
-
         socket2.on("error", () => {});
-
 
         waitFor(socket2, "close");
       });
@@ -301,11 +305,16 @@ describe("Engine.IO protocol", () => {
         const sid = await initLongPollingSession();
 
         const [pollResponse] = await Promise.all([
-          fetch(`${URL}/testsuitesocket.io/?EIO=4&transport=polling&sid=${sid}`),
-          fetch(`${URL}/testsuitesocket.io/?EIO=4&transport=polling&sid=${sid}`, {
-            method: "post",
-            body: "1",
-          }),
+          fetch(
+            `${URL}/testsuitesocket.io/?EIO=4&transport=polling&sid=${sid}`,
+          ),
+          fetch(
+            `${URL}/testsuitesocket.io/?EIO=4&transport=polling&sid=${sid}`,
+            {
+              method: "post",
+              body: "1",
+            },
+          ),
         ]);
 
         assert.strictEqual(pollResponse.status, 200);
@@ -441,10 +450,7 @@ describe("Socket.IO protocol", () => {
 
       const authPacket = await waitFor(socket, "message");
 
-      assert.strictEqual(
-        authPacket.data,
-        '42["auth",{"token":"123"}]',
-      );
+      assert.strictEqual(authPacket.data, '42["auth",{"token":"123"}]');
     });
 
     it.skip("should allow connection to a custom namespace", async () => {
@@ -467,10 +473,7 @@ describe("Socket.IO protocol", () => {
 
       const authPacket = await waitFor(socket, "message");
 
-      assert.strictEqual(
-        authPacket.data,
-        '42/custom,["auth",{}]',
-      );
+      assert.strictEqual(authPacket.data, '42/custom,["auth",{}]');
     });
 
     it.skip("should allow connection to a custom namespace with a payload", async () => {
@@ -493,10 +496,7 @@ describe("Socket.IO protocol", () => {
 
       const authPacket = await waitFor(socket, "message");
 
-      assert.strictEqual(
-        authPacket.data,
-        '42/custom,["auth",{"token":"abc"}]',
-      );
+      assert.strictEqual(authPacket.data, '42/custom,["auth",{"token":"abc"}]');
     });
 
     it.skip("should disallow connection to an unknown namespace", async () => {
@@ -510,10 +510,7 @@ describe("Socket.IO protocol", () => {
 
       const { data } = await waitFor(socket, "message");
 
-      assert.strictEqual(
-        data,
-        '44/random,{"message":"Invalid namespace"}',
-      );
+      assert.strictEqual(data, '44/random,{"message":"Invalid namespace"}');
     });
 
     it("should disallow connection with an invalid handshake", async () => {
@@ -578,10 +575,7 @@ describe("Socket.IO protocol", () => {
 
       const { data } = await waitFor(socket, "message");
 
-      assert.strictEqual(
-        data,
-        '42["message-back",1,"2",{"3":[true]}]',
-      );
+      assert.strictEqual(data, '42["message-back",1,"2",{"3":[true]}]');
     });
 
     it("should send a packet with binary attachments", async () => {
@@ -599,14 +593,8 @@ describe("Socket.IO protocol", () => {
         packets[0],
         '452-["message-back",{"_placeholder":true,"num":0},{"_placeholder":true,"num":1}]',
       );
-      assert.deepStrictEqual(
-        packets[1],
-        Uint8Array.from([1, 2, 3]).buffer,
-      );
-      assert.deepStrictEqual(
-        packets[2],
-        Uint8Array.from([4, 5, 6]).buffer,
-      );
+      assert.deepStrictEqual(packets[1], Uint8Array.from([1, 2, 3]).buffer);
+      assert.deepStrictEqual(packets[2], Uint8Array.from([4, 5, 6]).buffer);
 
       socket.close();
     });
@@ -614,16 +602,11 @@ describe("Socket.IO protocol", () => {
     it("should send a plain-text packet with an ack", async () => {
       const socket = await initSocketIOConnection();
 
-      socket.send(
-        '42456["message-with-ack",1,"2",{"3":[false]}]',
-      );
+      socket.send('42456["message-with-ack",1,"2",{"3":[false]}]');
 
       const { data } = await waitFor(socket, "message");
 
-      assert.strictEqual(
-        data,
-        '43456[1,"2",{"3":[false]}]',
-      );
+      assert.strictEqual(data, '43456[1,"2",{"3":[false]}]');
     });
 
     it("should send a packet with binary attachments and an ack", async () => {
@@ -641,14 +624,8 @@ describe("Socket.IO protocol", () => {
         packets[0],
         '462-789[{"_placeholder":true,"num":0},{"_placeholder":true,"num":1}]',
       );
-      assert.deepStrictEqual(
-        packets[1],
-        Uint8Array.from([1, 2, 3]).buffer,
-      );
-      assert.deepStrictEqual(
-        packets[2],
-        Uint8Array.from([4, 5, 6]).buffer,
-      );
+      assert.deepStrictEqual(packets[1], Uint8Array.from([1, 2, 3]).buffer);
+      assert.deepStrictEqual(packets[2], Uint8Array.from([4, 5, 6]).buffer);
 
       socket.close();
     });
@@ -672,9 +649,7 @@ describe("Socket.IO protocol", () => {
     it("should close the connection upon invalid format (invalid ack id)", async () => {
       const socket = await initSocketIOConnection();
 
-      socket.send(
-        '42abc["message-with-ack",1,"2",{"3":[false]}]',
-      );
+      socket.send('42abc["message-with-ack",1,"2",{"3":[false]}]');
 
       await waitFor(socket, "close");
     });

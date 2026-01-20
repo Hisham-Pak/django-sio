@@ -106,6 +106,7 @@ SIO_ENGINEIO_MAX_PAYLOAD_BYTES = 1_000_000
 # Turn logging on to see server logs on why tests might be failing
 
 import logging
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

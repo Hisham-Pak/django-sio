@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Any
 import logging
+from typing import Any
 
 from .engineio import EngineIOWebSocketConsumer, LongPollingConsumer
 from .socketio import (
@@ -35,6 +35,7 @@ class SocketIOConsumer:
 
       Example:
         `event_chat_message` handles the Socket.IO event `"chat_message"`.
+
     """
 
     namespace: str = DEFAULT_NAMESPACE
@@ -49,6 +50,7 @@ class SocketIOConsumer:
 
         This app will receive BOTH http and websocket scopes and internally
         dispatch to the proper Engine.IO transport consumer.
+
         """
         logger.info(
             "SocketIOConsumer.as_asgi called for %s namespace=%s",
@@ -75,7 +77,9 @@ class SocketIOConsumer:
                 return await ws_app(scope, receive, send)
 
             logger.warning(
-                "SocketIOConsumer does not handle scope type %r path=%s cls=%s",
+                """
+                SocketIOConsumer does not handle scope type %r path=%s cls=%s
+                """,
                 scope_type,
                 path,
                 cls.__name__,
@@ -122,7 +126,10 @@ class SocketIOConsumer:
             async def _connect(socket: NamespaceSocket, auth: Any) -> bool:
                 # one instance per logical Socket.IO connection
                 logger.info(
-                    "SocketIOConsumer.connect invoked cls=%s socket_id=%s ns=%s auth_type=%s",
+                    """
+                    SocketIOConsumer.connect invoked cls=%s socket_id=%s ns=%s
+                    auth_type=%s
+                    """,
                     cls.__name__,
                     socket.id,
                     socket.namespace,
@@ -132,7 +139,10 @@ class SocketIOConsumer:
                 socket.state["consumer"] = self
                 result = bool(await self.connect(socket, auth))  # type: ignore[arg-type]
                 logger.debug(
-                    "SocketIOConsumer.connect result cls=%s socket_id=%s ns=%s accepted=%s",
+                    """
+                    SocketIOConsumer.connect result cls=%s socket_id=%s ns=%s
+                    accepted=%s
+                    """,
                     cls.__name__,
                     socket.id,
                     socket.namespace,
@@ -155,7 +165,10 @@ class SocketIOConsumer:
             consumer = ns_socket.state.get("consumer")
 
             logger.info(
-                "Disconnect hook triggered for socket_id=%s ns=%s reason=%s consumer_type=%s",
+                """
+                Disconnect hook triggered for socket_id=%s ns=%s reason=%s
+                consumer_type=%s
+                """,
                 ns_socket.id,
                 ns_socket.namespace,
                 reason,
@@ -165,7 +178,10 @@ class SocketIOConsumer:
             # Only handle sockets whose consumer is an instance of this class
             if consumer is None or not isinstance(consumer, cls):
                 logger.debug(
-                    "Disconnect hook ignored: consumer mismatch for socket_id=%s ns=%s",
+                    """
+                    Disconnect hook ignored: consumer mismatch for socket_id=%s
+                    ns=%s
+                    """,
                     ns_socket.id,
                     ns_socket.namespace,
                 )
@@ -173,7 +189,9 @@ class SocketIOConsumer:
 
             if hasattr(consumer, "disconnect"):
                 logger.debug(
-                    "Calling consumer.disconnect for socket_id=%s ns=%s cls=%s",
+                    """
+                    Calling consumer.disconnect for socket_id=%s ns=%s cls=%s
+                    """,
                     ns_socket.id,
                     ns_socket.namespace,
                     cls.__name__,
@@ -192,12 +210,15 @@ class SocketIOConsumer:
 
         server.register_disconnect_hook(_on_client_disconnect)
         logger.debug(
-            "Registered disconnect hook for consumer=%s namespace=%s",
+            """
+            Registered disconnect hook for consumer=%s namespace=%s
+            """,
             cls.__name__,
             namespace_name,
         )
 
-        # EVENT handlers: methods named event_<name> -> Socket.IO event "<name>"
+        # EVENT handlers: methods named event_<name> ->
+        # Socket.IO event "<name>"
         for attr_name, value in cls.__dict__.items():
             if not attr_name.startswith("event_"):
                 continue
@@ -224,7 +245,10 @@ class SocketIOConsumer:
                 consumer = socket.state.get("consumer")
                 if consumer is None:
                     logger.debug(
-                        "No consumer instance in state for socket_id=%s ns=%s, creating new %s",
+                        """
+                        No consumer instance in state for socket_id=%s ns=%s,
+                        creating new %s
+                        """,
                         socket.id,
                         socket.namespace,
                         cls.__name__,
@@ -235,7 +259,10 @@ class SocketIOConsumer:
                 method = getattr(consumer, _method_name)
 
                 logger.info(
-                    "Handling Socket.IO event=%s method=%s.%s socket_id=%s ns=%s args_count=%d has_ack=%s",
+                    """
+                    Handling Socket.IO event=%s method=%s.%s socket_id=%s
+                    ns=%s args_count=%d has_ack=%s
+                    """,
                     _event_name,
                     cls.__name__,
                     _method_name,
@@ -250,7 +277,10 @@ class SocketIOConsumer:
                 #   async def event_x(self, socket, *args, ack=None)
                 if "ack" in method.__code__.co_varnames:
                     logger.debug(
-                        "Calling event handler with ack parameter for event=%s method=%s.%s",
+                        """
+                        Calling event handler with ack parameter for event=%s
+                        method=%s.%s
+                        """,
                         _event_name,
                         cls.__name__,
                         _method_name,
@@ -258,7 +288,10 @@ class SocketIOConsumer:
                     await method(socket, *args, ack=ack)
                 else:
                     logger.debug(
-                        "Calling event handler without ack parameter for event=%s method=%s.%s",
+                        """
+                        Calling event handler without ack parameter for
+                        event=%s method=%s.%s
+                        """,
                         _event_name,
                         cls.__name__,
                         _method_name,
@@ -266,7 +299,10 @@ class SocketIOConsumer:
                     await method(socket, *args)
                     if ack is not None:
                         logger.debug(
-                            "Sending default ack() for event=%s socket_id=%s ns=%s",
+                            """
+                            Sending default ack() for event=%s socket_id=%s
+                            ns=%s
+                            """,
                             _event_name,
                             socket.id,
                             socket.namespace,

@@ -66,7 +66,10 @@ class LongPollingConsumer(AsyncHttpConsumer):
         # Validate basic query params
         if eio != ENGINE_IO_VERSION or transport != TRANSPORT_POLLING:
             logger.warning(
-                "Invalid Engine.IO query parameters eio=%s transport=%s expected_eio=%s",
+                """
+                Invalid Engine.IO query parameters eio=%s transport=%s
+                expected_eio=%s
+                """,
                 eio,
                 transport,
                 ENGINE_IO_VERSION,
@@ -208,14 +211,15 @@ class LongPollingConsumer(AsyncHttpConsumer):
         session.active_get = True
         ping_task = None
         try:
-            # Immediate ping if the interval has already elapsed (or first ping)
+            # Immediate ping if the interval has already elapsed (or first
+            # ping)
             if session.should_send_ping():
                 logger.debug("Immediate ping for sid=%s", session.sid)
                 await session.enqueue_http_packet(encode_text_packet("2"))
                 session.mark_ping_sent()
             else:
-                # Schedule a ping during this long poll when the interval elapses
-                # since the last ping was sent.
+                # Schedule a ping during this long poll when the interval
+                # elapses since the last ping was sent.
                 now = time.time()
                 last_ping = getattr(session, "last_ping_sent", now)
                 elapsed_ms = int((now - last_ping) * 1000)
@@ -230,7 +234,10 @@ class LongPollingConsumer(AsyncHttpConsumer):
                     await asyncio.sleep(remaining_ms / 1000.0)
                     if session.closed or not session.active_get:
                         logger.debug(
-                            "Skipping delayed ping sid=%s closed=%s active_get=%s",
+                            """
+                            Skipping delayed ping sid=%s closed=%s
+                            active_get=%s
+                            """,
                             session.sid,
                             session.closed,
                             session.active_get,
@@ -269,7 +276,9 @@ class LongPollingConsumer(AsyncHttpConsumer):
 
     async def _handle_post(self, session: EngineIOSession, body: bytes):
         logger.debug(
-            "LongPollingConsumer._handle_post sid=%s body_len=%d active_post=%s",
+            """
+            LongPollingConsumer._handle_post sid=%s body_len=%d active_post=%s
+            """,
             session.sid,
             len(body),
             session.active_post,

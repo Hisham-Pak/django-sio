@@ -4,6 +4,7 @@ from sio import SocketIOConsumer
 from sio.socketio import NamespaceSocket
 from sio.consumer import Ack
 
+
 class MainSocketIOConsumer(SocketIOConsumer):
     namespace = "/"
 
@@ -47,4 +48,3 @@ class CustomSocketIOConsumer(SocketIOConsumer):
     async def connect(self, socket: NamespaceSocket, auth: Any) -> bool:
         await socket.emit("auth", auth)
         return True
-

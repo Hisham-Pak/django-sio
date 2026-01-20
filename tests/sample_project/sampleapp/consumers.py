@@ -92,7 +92,6 @@ class LiveMessageConsumer(SocketIOConsumer):
         if ack is not None:
             await ack({"status": "ok"})
 
-
     # ------------------------------------------------------------------ #
     # Test helper events for JS client coverage
     # ------------------------------------------------------------------ #
@@ -109,7 +108,10 @@ class LiveMessageConsumer(SocketIOConsumer):
 
     async def event_ack_only(self, socket, payload, ack=None):
         """
-        Only sends an ack, no server-side emit. Useful to test pure ack flows.
+        Only sends an ack, no server-side emit.
+
+        Useful to test pure ack flows.
+
         """
         if ack is not None:
             await ack({"status": "ok", "payload": payload})
@@ -117,7 +119,9 @@ class LiveMessageConsumer(SocketIOConsumer):
     async def event_join_room(self, socket, payload, ack=None):
         """
         Join an arbitrary room provided by the client.
+
         payload: { "room": "name" }
+
         """
         room = payload.get("room")
         if room:
@@ -128,7 +132,9 @@ class LiveMessageConsumer(SocketIOConsumer):
     async def event_leave_room(self, socket, payload, ack=None):
         """
         Leave an arbitrary room.
+
         payload: { "room": "name" }
+
         """
         room = payload.get("room")
         if room:
@@ -139,7 +145,9 @@ class LiveMessageConsumer(SocketIOConsumer):
     async def event_room_broadcast(self, socket, payload, ack=None):
         """
         Broadcast a payload to everyone in a named room.
+
         payload: { "room": "name", "data": <any JSON-serializable> }
+
         """
         room = payload.get("room")
         data = payload.get("data")
@@ -159,6 +167,7 @@ class LiveMessageConsumer(SocketIOConsumer):
 
         Expected payload:
             { "message": "some error text" }
+
         """
         message = payload.get("message", "forced error from trigger_error")
         try:
@@ -166,7 +175,9 @@ class LiveMessageConsumer(SocketIOConsumer):
             raise RuntimeError(message)
         except Exception as exc:
             # Swallow the exception so Channels doesn't log "Exception inside application"
-            logger.debug("Swallowed expected test error in trigger_error: %s", exc)
+            logger.debug(
+                "Swallowed expected test error in trigger_error: %s", exc
+            )
             if ack is not None:
                 await ack({"status": "error", "message": str(exc)})
 
@@ -203,7 +214,6 @@ class LiveMessageConsumer(SocketIOConsumer):
         count = qs.count()
         messages = list(qs.values("id", "title", "message"))
         return {"count": count, "messages": messages}
-
 
     @database_sync_to_async
     def _create_message(self, title, text):

@@ -135,10 +135,11 @@ def test_is_timed_out_branches(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_http_next_payload_segment_too_large_returns_single_segment_even_if_over_limit(
-    monkeypatch,
-):
+async def test_http_next_payload_segment_too_large(monkeypatch):
     """
+    test_http_next_payload_segment_too_large_returns_single_segment
+    _even_if_over_limit.
+
     When a *single* queued segment is larger than max_payload_bytes, the
     implementation still delivers that segment in one response, rather than
     dropping or requeueing it. The max_payload_bytes limit is only used to
@@ -146,6 +147,7 @@ async def test_http_next_payload_segment_too_large_returns_single_segment_even_i
 
     This complements test_http_next_payload_respects_max_payload, which covers
     splitting across multiple segments.
+
     """
     sess = session_mod.EngineIOSession("sid-large")
 

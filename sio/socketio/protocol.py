@@ -75,15 +75,14 @@ def _deconstruct_data(data: JSONData) -> tuple[JSONData, list[bytes]]:
         return obj
 
     result = _walk(data)
-    logger.debug(
-        "_deconstruct_data attachments=%d", len(attachments)
-    )
+    logger.debug("_deconstruct_data attachments=%d", len(attachments))
     return result, attachments
 
 
 def _reconstruct_data(data: JSONData, attachments: list[bytes]) -> JSONData:
     """
-    Recursively walk `data`, replace placeholder objects with actual binary attachments.
+    Recursively walk `data`, replace placeholder objects with actual binary
+    attachments.
     """
 
     def _walk(obj: Any) -> Any:
@@ -103,9 +102,7 @@ def _reconstruct_data(data: JSONData, attachments: list[bytes]) -> JSONData:
         return obj
 
     result = _walk(data)
-    logger.debug(
-        "_reconstruct_data attachments_used=%d", len(attachments)
-    )
+    logger.debug("_reconstruct_data attachments_used=%d", len(attachments))
     return result
 
 
@@ -172,7 +169,10 @@ def encode_packet_to_eio(
 
     header = "".join(parts)
     logger.debug(
-        "encode_packet_to_eio type=%s nsp=%s id=%s attachments=%d is_binary=%s header_len=%d",
+        """
+        encode_packet_to_eio type=%s nsp=%s id=%s attachments=%d is_binary=%s
+        header_len=%d
+        """,
         p_type,
         nsp,
         pkt.id,
@@ -205,6 +205,7 @@ class SocketIOParser:
 
     You feed it Engine.IO "message" payloads (text or binary) and it yields
     completed Socket.IO packets (possibly zero or more).
+
     """
 
     def __init__(self):
@@ -240,7 +241,10 @@ class SocketIOParser:
 
         if self._binary_accum is not None:
             logger.warning(
-                "Unexpected text frame while waiting for binary attachments, dropping state"
+                """
+                Unexpected text frame while waiting for binary attachments,
+                dropping state
+                """
             )
             self._binary_accum = None
             return []
@@ -248,7 +252,10 @@ class SocketIOParser:
         first = text[0]
         if not first.isdigit():
             logger.warning(
-                "Malformed Socket.IO text payload, first char is not digit: %r",
+                """
+                Malformed Socket.IO text payload, first char is not digit:
+                %r
+                """,
                 first,
             )
             return []
@@ -271,9 +278,7 @@ class SocketIOParser:
                 i += 1
                 rest = rest[i:]
             else:
-                logger.warning(
-                    "Malformed binary packet header: %r", text
-                )
+                logger.warning("Malformed binary packet header: %r", text)
                 return []
 
         # Now parse namespace if present

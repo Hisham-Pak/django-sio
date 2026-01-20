@@ -20,7 +20,6 @@ from .constants import (
 )
 from .packets import (
     Packet,
-    decode_ws_binary_frame,
     decode_ws_text_frame,
     encode_open_packet,
     encode_ws_binary_frame,
@@ -71,7 +70,9 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
 
         if eio != ENGINE_IO_VERSION or transport != TRANSPORT_WEBSOCKET:
             logger.warning(
-                "Invalid WS Engine.IO params eio=%s transport=%s expected_eio=%s",
+                """
+                Invalid WS Engine.IO params eio=%s transport=%s expected_eio=%s
+                """,
                 eio,
                 transport,
                 ENGINE_IO_VERSION,
@@ -85,7 +86,9 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
             session = await get_session(sid)
             if not session or session.is_timed_out() or session.closed:
                 logger.warning(
-                    "WebSocket upgrade failed, unknown/timed-out/closed sid=%s",
+                    """
+                    WebSocket upgrade failed, unknown/timed-out/closed sid=%s
+                    """,
                     sid,
                 )
                 await self.close()
@@ -136,7 +139,9 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
             # Notify app for WS-only sessions
             app = get_engineio_app()
             socket = get_or_create_socket(session)
-            logger.debug("Notifying app.on_connect sid=%s (websocket)", session.sid)
+            logger.debug(
+                "Notifying app.on_connect sid=%s (websocket)", session.sid
+            )
             await app.on_connect(socket)
 
         # Start heartbeat task
@@ -195,7 +200,10 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
                     or self.session.last_pong < sent_at
                 ):
                     logger.warning(
-                        "Heartbeat timeout, closing WebSocket sid=%s last_pong=%f sent_at=%f",
+                        """
+                        Heartbeat timeout, closing WebSocket sid=%s
+                        last_pong=%f sent_at=%f
+                        """,
                         self.session.sid if self.session else None,
                         self.session.last_pong if self.session else -1,
                         sent_at,
@@ -302,7 +310,8 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
             # Switch primary transport to WebSocket
             self.session.transport = "websocket"
 
-            # Flush any pending HTTP long-polling queue segments to the WebSocket
+            # Flush any pending HTTP long-polling queue segments to the
+            # WebSocket
             if self.session.websocket is self:
                 logger.debug(
                     "Flushing HTTP queue to WebSocket sid=%s", self.session.sid
@@ -328,7 +337,9 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
             await app.on_message(socket, pkt.data, pkt.binary)
 
         elif pkt.type == "1":  # close
-            logger.info("Engine.IO WS close packet received sid=%s", self.session.sid)
+            logger.info(
+                "Engine.IO WS close packet received sid=%s", self.session.sid
+            )
             await close_session(self.session, reason="client_close")
             await self.close()
 
@@ -347,9 +358,7 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
         type="sio.broadcast").
         """
         if not self.session or self.session.closed:
-            logger.debug(
-                "sio_broadcast ignored for missing/closed session"
-            )
+            logger.debug("sio_broadcast ignored for missing/closed session")
             return
 
         header: str = event["header"]

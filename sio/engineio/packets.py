@@ -34,6 +34,7 @@ class Packet:
       str for text payloads, bytes for binary.
     binary:
       True if data is bytes.
+
     """
 
     type: str
@@ -65,7 +66,10 @@ def encode_open_packet(
         "maxPayload": max_payload,
     }
     logger.debug(
-        "encode_open_packet sid=%s upgrades=%s pingInterval=%d pingTimeout=%d maxPayload=%d",
+        """
+        encode_open_packet sid=%s upgrades=%s pingInterval=%d pingTimeout=%d
+        maxPayload=%d
+        """,
         sid,
         upgrades_list,
         ping_interval_ms,
@@ -168,9 +172,7 @@ def decode_http_payload(body: bytes) -> list[Packet]:
                 logger.error("Invalid base64 payload: %s", exc)
                 raise ValueError(f"Invalid base64 payload: {exc}") from exc
 
-            logger.debug(
-                "Decoded HTTP binary message len=%d", len(raw)
-            )
+            logger.debug("Decoded HTTP binary message len=%d", len(raw))
             packets.append(Packet(type="4", data=raw, binary=True))
         else:
             p_type = segment[0]

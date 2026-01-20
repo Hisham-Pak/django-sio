@@ -420,11 +420,12 @@ async def test_ws_connect_upgrade_existing_websocket(monkeypatch):
     # Use our fake session + stubs
     monkeypatch.setattr(ws_mod, "get_session", fake_get_session)
     consumer.accept = fake_accept  # type: ignore[assignment]
-    consumer.close = fake_close    # type: ignore[assignment]
+    consumer.close = fake_close  # type: ignore[assignment]
 
     await consumer.connect()
 
-    # The new websocket must be accepted then closed, but must NOT replace the existing one
+    # The new websocket must be accepted then closed, but must NOT replace the
+    # existing one
     assert accepted.get("called") is True
     assert closed.get("called") is True
     assert session.websocket is not consumer
@@ -710,12 +711,13 @@ async def test_ws_receive_ping_probe_and_regular_text_ping():
     assert ("3", "probe") in sent_text
     assert ("3", "hello") in sent_text
 
+
 @pytest.mark.asyncio
 async def test_ws_receive_binary_frame_is_forwarded_as_message(monkeypatch):
     """
-    With the Socket.IO-compatible WS behavior, *all* WS binary frames are treated
-    as Engine.IO "message" packets (type '4') carrying raw bytes, and forwarded
-    to app.on_message(..., binary=True).
+    With the Socket.IO-compatible WS behavior, *all* WS binary frames are
+    treated as Engine.IO "message" packets (type '4') carrying raw bytes, and
+    forwarded to app.on_message(..., binary=True).
     """
 
     class DummyApp:
@@ -749,9 +751,7 @@ async def test_ws_receive_binary_frame_is_forwarded_as_message(monkeypatch):
 
     monkeypatch.setattr(ws_mod, "get_engineio_app", fake_get_engineio_app)
     monkeypatch.setattr(
-        ws_mod,
-        "get_or_create_socket",
-        fake_get_or_create_socket
+        ws_mod, "get_or_create_socket", fake_get_or_create_socket
     )
 
     await consumer.receive(bytes_data=b"2\x01\x02")

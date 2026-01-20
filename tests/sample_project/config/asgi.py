@@ -18,7 +18,10 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
 
 from sample_project.sampleapp.consumers import LiveMessageConsumer
-from sample_project.socketiotestsuiteapp.consumers import MainSocketIOConsumer, CustomSocketIOConsumer
+from sample_project.socketiotestsuiteapp.consumers import (
+    MainSocketIOConsumer,
+    CustomSocketIOConsumer,
+)
 
 application = ProtocolTypeRouter(
     {
@@ -30,10 +33,12 @@ application = ProtocolTypeRouter(
                             r"^socket\.io/?$", LiveMessageConsumer.as_asgi()
                         ),
                         re_path(
-                            r"^testsuitesocket\.io/?$", MainSocketIOConsumer.as_asgi()
+                            r"^testsuitesocket\.io/?$",
+                            MainSocketIOConsumer.as_asgi(),
                         ),
                         re_path(
-                            r"^testsuitecustomsocket\.io/?$", CustomSocketIOConsumer.as_asgi()
+                            r"^testsuitecustomsocket\.io/?$",
+                            CustomSocketIOConsumer.as_asgi(),
                         ),
                     ]
                 )
@@ -44,10 +49,12 @@ application = ProtocolTypeRouter(
                 [
                     re_path(r"^socket\.io/?$", LiveMessageConsumer.as_asgi()),
                     re_path(
-                        r"^testsuitesocket\.io/?$", MainSocketIOConsumer.as_asgi()
+                        r"^testsuitesocket\.io/?$",
+                        MainSocketIOConsumer.as_asgi(),
                     ),
                     re_path(
-                        r"^testsuitecustomsocket\.io/?$", CustomSocketIOConsumer.as_asgi()
+                        r"^testsuitecustomsocket\.io/?$",
+                        CustomSocketIOConsumer.as_asgi(),
                     ),
                     # Catch-all: send everything else (like /admin/login/) to Django
                     re_path("", application),

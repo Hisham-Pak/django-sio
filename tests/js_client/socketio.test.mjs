@@ -316,7 +316,9 @@ describe("django-sio JS client integration", function () {
             }
 
             if (phase === 2) {
-              const stillThere = state.messages.find((m) => m.id === createdMsg.id);
+              const stillThere = state.messages.find(
+                (m) => m.id === createdMsg.id,
+              );
               if (stillThere) return;
 
               assert.strictEqual(

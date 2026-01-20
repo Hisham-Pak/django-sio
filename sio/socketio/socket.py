@@ -5,9 +5,10 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import itertools
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from ..engineio.app import EngineIOSocket
+from . import server as socketio_server  # avoid circular import
 from .constants import (
     DEFAULT_NAMESPACE,
     SIO_ACK,
@@ -29,7 +30,7 @@ class NamespaceSocket:
     Socket.IO "socket" bound to a namespace (e.g. "/", "/chat").
     """
 
-    server: "SocketIOServer"
+    server: socketio_server.SocketIOServer
     eio: EngineIOSocket
     namespace: str = DEFAULT_NAMESPACE
     id: str = ""  # Socket.IO ID (sid-like)
@@ -51,7 +52,10 @@ class NamespaceSocket:
         header, attachments = encode_packet_to_eio(pkt)
 
         logger.debug(
-            "NamespaceSocket._send_packet socket.id=%s ns=%s type=%s id=%s attachments=%d header_len=%d",
+            """
+            NamespaceSocket._send_packet socket.id=%s ns=%s type=%s id=%s
+            attachments=%d header_len=%d
+            """,
             self.id,
             self.namespace,
             pkt.type,
@@ -87,7 +91,10 @@ class NamespaceSocket:
         pkt_type = SIO_EVENT
 
         logger.debug(
-            "NamespaceSocket.emit socket.id=%s ns=%s event=%s args_count=%d has_ack=%s",
+            """
+            NamespaceSocket.emit socket.id=%s ns=%s event=%s args_count=%d
+            has_ack=%s
+            """,
             self.id,
             self.namespace,
             event,
@@ -150,7 +157,10 @@ class NamespaceSocket:
         """
         if room in self.rooms:
             logger.debug(
-                "NamespaceSocket.join no-op (already in room) socket.id=%s ns=%s room=%s",
+                """
+                NamespaceSocket.join no-op (already in room) socket.id=%s ns=%s
+                room=%s
+                """,
                 self.id,
                 self.namespace,
                 room,
@@ -169,7 +179,9 @@ class NamespaceSocket:
         if ws is not None and ws.channel_layer is not None:
             group = self.server._group_name(self.namespace, room)
             logger.debug(
-                "Adding WebSocket to channel layer group socket.id=%s group=%s",
+                """
+                Adding WebSocket to channel layer group socket.id=%s group=%s
+                """,
                 self.id,
                 group,
             )
@@ -178,7 +190,10 @@ class NamespaceSocket:
     async def leave(self, room: str) -> None:
         if room not in self.rooms:
             logger.debug(
-                "NamespaceSocket.leave no-op (not in room) socket.id=%s ns=%s room=%s",
+                """
+                NamespaceSocket.leave no-op (not in room) socket.id=%s ns=%s
+                room=%s
+                """,
                 self.id,
                 self.namespace,
                 room,
@@ -197,7 +212,10 @@ class NamespaceSocket:
         if ws is not None and ws.channel_layer is not None:
             group = self.server._group_name(self.namespace, room)
             logger.debug(
-                "Removing WebSocket from channel layer group socket.id=%s group=%s",
+                """
+                Removing WebSocket from channel layer group socket.id=%s
+                group=%s
+                """,
                 self.id,
                 group,
             )
@@ -222,7 +240,10 @@ class NamespaceSocket:
 
     async def _handle_packet_from_client(self, pkt: SocketIOPacket) -> None:
         logger.debug(
-            "NamespaceSocket._handle_packet_from_client socket.id=%s ns=%s type=%s id=%s",
+            """
+            NamespaceSocket._handle_packet_from_client socket.id=%s ns=%s
+            type=%s id=%s
+            """,
             self.id,
             self.namespace,
             pkt.type,
@@ -250,7 +271,10 @@ class NamespaceSocket:
         )
         if not isinstance(data, list) or not data:
             logger.warning(
-                "Bad event payload, forcing disconnect socket.id=%s ns=%s data=%r",
+                """
+                Bad event payload, forcing disconnect socket.id=%s ns=%s
+                data=%r
+                """,
                 self.id,
                 self.namespace,
                 data,

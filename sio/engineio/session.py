@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import secrets
 import time
 from typing import Any
-import logging
 
 from .constants import (
     MAX_PAYLOAD_BYTES,
@@ -64,7 +64,9 @@ class EngineIOSession:
 
     def touch(self) -> None:
         self.last_seen = time.time()
-        logger.debug("Session touched sid=%s last_seen=%f", self.sid, self.last_seen)
+        logger.debug(
+            "Session touched sid=%s last_seen=%f", self.sid, self.last_seen
+        )
 
     def mark_ping_sent(self) -> None:
         self.last_ping_sent = time.time()
@@ -143,7 +145,7 @@ class EngineIOSession:
         )
         try:
             first = await asyncio.wait_for(self._queue.get(), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.debug("http_next_payload timeout sid=%s", self.sid)
             return b""
 
@@ -170,7 +172,10 @@ class EngineIOSession:
             b = piece.encode("utf-8")
             if total_bytes + len(b) > MAX_PAYLOAD_BYTES:
                 logger.debug(
-                    "http_next_payload reached MAX_PAYLOAD_BYTES sid=%s total_bytes=%d",
+                    """
+                    http_next_payload reached MAX_PAYLOAD_BYTES sid=%s
+                    total_bytes=%d
+                    """,
                     self.sid,
                     total_bytes,
                 )

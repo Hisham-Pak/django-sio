@@ -6,7 +6,6 @@ import shutil
 import subprocess
 
 import pytest
-import sio
 
 JS_DIR = pathlib.Path(__file__).parent.parent / "js_client"
 
@@ -37,7 +36,6 @@ def test_js_socketio_client_integration(live_server_url: str, ensure_js_deps):
     env["DJANGO_SIO_BASE_URL"] = live_server_url
 
     cmd = ["npm", "test"]
-
 
     js_args = []
 
