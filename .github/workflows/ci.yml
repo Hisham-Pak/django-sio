@@ -64,14 +64,14 @@ jobs:
           if [[ "$env" == py312-* ]]; then echo "python=3.12" >> $GITHUB_OUTPUT; exit 0; fi
           if [[ "$env" == py313-* ]]; then echo "python=3.13" >> $GITHUB_OUTPUT; exit 0; fi
           if [[ "$env" == py314-* ]]; then echo "python=3.14" >> $GITHUB_OUTPUT; exit 0; fi
-          # qa / qa-js / others
+          # qa / qa-js / js-* / others
           echo "python=3.12" >> $GITHUB_OUTPUT
 
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ steps.py.outputs.python }}
 
-      # Only needed for js-related tox envs (qa-js, etc.)
+      # Only needed for js-related tox envs (qa-js, js-*, etc.)
       - uses: actions/setup-node@v4
         if: ${{ contains(matrix.toxenv, 'js') }}
         with:
