@@ -1,3 +1,5 @@
+[![PyPI version](https://badge.fury.io/py/django-sio.svg)](https://badge.fury.io/py/django-sio)
+[![codecov](https://codecov.io/github/Hisham-Pak/django-sio/graph/badge.svg?token=4K0FFMWOS9)](https://codecov.io/github/Hisham-Pak/django-sio)
 # Django SocketIO (`django-sio`)
 
 Socket.IO for Django, powered by Channels and compatible with the official Socket.IO clients.
@@ -7,6 +9,9 @@ Socket.IO for Django, powered by Channels and compatible with the official Socke
 🚀 Demo project: [django-sio-chat-demo](https://github.com/hisham-pak/django-sio-chat-demo)
 
 ---
+## Code Coverage
+
+![Repository graph](https://codecov.io/github/Hisham-Pak/django-sio/graphs/icicle.svg?token=4K0FFMWOS9 "Repository graph")
 
 ## Development Setup
 
