@@ -181,3 +181,32 @@ async def test_destroy_session_removes_session_from_registry():
 
     # Calling again must not raise (pop with default None)
     await destroy_session(sid)
+
+@pytest.mark.asyncio
+async def test_http_next_payload_empty_payload_parts(monkeypatch):
+    """
+    Cover:
+        if not payload_parts: ... return b""
+
+    We force MAX_PAYLOAD_BYTES so small that even the first segment cannot fit.
+    The code should return b"" (not a timeout), and it should requeue the
+    segment that didn't fit.
+    """
+    import sio.engineio.session as session_mod
+
+    # Force "nothing fits", even the first segment.
+    monkeypatch.setattr(session_mod, "MAX_PAYLOAD_BYTES", 0)
+
+    sess = EngineIOSession("sid-empty-parts")
+
+    await sess.enqueue_http_packet("4hello")  # any non-empty segment
+
+    # Not a timeout: we *did* have a queued segment, but it couldn't fit.
+    body1 = await sess.http_next_payload(timeout=0.1)
+    assert body1 == b""
+
+    # The segment should have been put back on the queue.
+    monkeypatch.setattr(session_mod, "MAX_PAYLOAD_BYTES", 1000)
+
+    body2 = await sess.http_next_payload(timeout=0.1)
+    assert body2 == b"4hello"

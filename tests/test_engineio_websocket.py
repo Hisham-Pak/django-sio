@@ -891,6 +891,112 @@ async def test_ws_receive_close_calls_close_session_and_self_close(
     assert closed_self.get("called") is True
 
 
+@pytest.mark.asyncio
+async def test_ws_receive_binary_ping_sends_binary_pong(monkeypatch):
+    """
+    Cover:
+        if pkt.binary:
+            await self._send_binary_packet("3", pkt.data or b"")
+
+    We patch decode_ws_text_frame to return a *binary* ping Packet even though
+    we're passing text_data, just to drive that branch.
+    """
+    from sio.engineio import websocket as ws_mod
+
+    consumer = EngineIOWebSocketConsumer()
+    session = EngineIOSession("sid-bin-ping")
+    consumer.session = session
+
+    # Make app/socket lookups harmless (receive() always does them)
+    class DummyApp:
+        async def on_message(self, socket, data, binary):  # pragma: no cover
+            pass
+
+        async def on_connect(self, socket):  # pragma: no cover
+            pass
+
+        async def on_disconnect(self, socket, reason):  # pragma: no cover
+            pass
+
+    class DummySocket:
+        def __init__(self, sess):
+            self.session = sess
+
+    monkeypatch.setattr(ws_mod, "get_engineio_app", lambda: DummyApp())
+    monkeypatch.setattr(ws_mod, "get_or_create_socket", lambda sess: DummySocket(sess))
+
+    # Force decode to produce a binary ping
+    monkeypatch.setattr(
+        ws_mod,
+        "decode_ws_text_frame",
+        lambda text: ws_mod.Packet(type="2", data=b"\x01\x02", binary=True),
+    )
+
+    sent = []
+
+    async def fake_send_binary_packet(pkt_type: str, data: bytes):
+        sent.append((pkt_type, data))
+
+    consumer._send_binary_packet = fake_send_binary_packet  # type: ignore[assignment]
+
+    await consumer.receive(text_data="2")  # value irrelevant; decode is patched
+
+    assert sent == [("3", b"\x01\x02")]
+
+
+@pytest.mark.asyncio
+async def test_ws_receive_ignores_unknown_packet_type(monkeypatch):
+    """
+    Cover:
+        logger.debug("Ignoring WS packet type=%s ...")
+
+    by returning a packet type that isn't handled.
+    """
+    from sio.engineio import websocket as ws_mod
+
+    consumer = EngineIOWebSocketConsumer()
+    session = EngineIOSession("sid-ignore")
+    consumer.session = session
+
+    # Make app/socket lookups harmless (receive() always does them)
+    class DummyApp:
+        async def on_message(self, socket, data, binary):  # pragma: no cover
+            pass
+
+        async def on_connect(self, socket):  # pragma: no cover
+            pass
+
+        async def on_disconnect(self, socket, reason):  # pragma: no cover
+            pass
+
+    class DummySocket:
+        def __init__(self, sess):
+            self.session = sess
+
+    monkeypatch.setattr(ws_mod, "get_engineio_app", lambda: DummyApp())
+    monkeypatch.setattr(ws_mod, "get_or_create_socket", lambda sess: DummySocket(sess))
+
+    # Return an unhandled type (e.g. "9")
+    monkeypatch.setattr(
+        ws_mod,
+        "decode_ws_text_frame",
+        lambda text: ws_mod.Packet(type="9", data="x", binary=False),
+    )
+
+    # Assert we did NOT accidentally call close()
+    closed = {"called": False}
+
+    async def fake_close(code=None):
+        closed["called"] = True
+
+    consumer.close = fake_close  # type: ignore[assignment]
+
+    await consumer.receive(text_data="9x")
+
+    # Unknown packet types are ignored (no close)
+    assert closed["called"] is False
+
+
 # --------------------------------------------------------------------------- #
 # sio_broadcast() branches
 # --------------------------------------------------------------------------- #

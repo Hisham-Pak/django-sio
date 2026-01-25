@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import time
 import pytest
 
 from sio.engineio.constants import ENGINE_IO_VERSION, TRANSPORT_POLLING
@@ -608,6 +610,143 @@ async def test_handle_get_without_ping_and_empty_payload():
     assert session.enqueued == []
     assert captured["status"] == 200
     assert captured["body"] == b""
+
+
+@pytest.mark.asyncio
+async def test_handle_get_delayed_ping_task_executes(monkeypatch):
+    """
+    Cover the delayed_ping() inner coroutine in _handle_get():
+
+    - should_send_ping() is False so it schedules delayed_ping()
+    - PING_INTERVAL_MS is patched very small so the delay is short
+    - http_next_payload() awaits long enough for delayed_ping() to run
+    - delayed_ping() enqueues a ping ("2") and calls mark_ping_sent()
+    """
+    from sio.engineio import polling as polling_mod
+
+    # Make the delayed ping happen quickly.
+    monkeypatch.setattr(polling_mod, "PING_INTERVAL_MS", 5)  # 5ms
+
+    consumer = LongPollingConsumer()
+
+    class Sess:
+        def __init__(self):
+            self.sid = "sid-delayed-ping"
+            self.active_get = False
+            self.closed = False
+            self.transport = TRANSPORT_POLLING
+            self.enqueued = []
+            self.mark_ping_called = False
+            # Ensure remaining_ms > 0 (so delayed ping is scheduled, not immediate).
+            self.last_ping_sent = time.time()
+
+        def should_send_ping(self):
+            return False
+
+        async def enqueue_http_packet(self, segment: str):
+            self.enqueued.append(segment)
+
+        def mark_ping_sent(self):
+            self.mark_ping_called = True
+
+        async def http_next_payload(self, timeout: float) -> bytes:
+            # Wait longer than the patched interval so delayed_ping() fires first.
+            await asyncio.sleep(0.02)
+            return b"payload-after-delayed-ping"
+
+    session = Sess()
+
+    captured = {}
+
+    async def fake_send_response(status, body, headers=None):
+        captured["status"] = status
+        captured["body"] = body
+        captured["headers"] = headers
+
+    consumer.send_response = fake_send_response  # type: ignore[assignment]
+
+    await consumer._handle_get(session)
+
+    # delayed_ping() should have executed
+    assert session.mark_ping_called is True
+    assert "2" in session.enqueued
+
+    # normal response still returned
+    assert captured["status"] == 200
+    assert captured["body"] == b"payload-after-delayed-ping"
+
+
+@pytest.mark.asyncio
+async def test_handle_get_delayed_ping_skips_when_inactive(monkeypatch):
+    """
+    Cover the delayed_ping() early-return branch:
+
+        if session.closed or not session.active_get: ... return
+
+    We force delayed_ping to be scheduled, then flip active_get False before it
+    executes.
+    """
+    from sio.engineio import polling as polling_mod
+
+    # Make delayed ping happen quickly.
+    monkeypatch.setattr(polling_mod, "PING_INTERVAL_MS", 10)  # 10ms
+
+    consumer = LongPollingConsumer()
+
+    class Sess:
+        def __init__(self):
+            self.sid = "sid-delayed-ping-skip"
+            self.active_get = False
+            self.closed = False
+            self.transport = TRANSPORT_POLLING
+            self.enqueued = []
+            self.mark_ping_called = False
+            # Ensure remaining_ms > 0 so delayed ping is scheduled.
+            self.last_ping_sent = time.time()
+
+        def should_send_ping(self):
+            return False
+
+        async def enqueue_http_packet(self, segment: str):
+            self.enqueued.append(segment)
+
+        def mark_ping_sent(self):
+            self.mark_ping_called = True
+
+        async def http_next_payload(self, timeout: float) -> bytes:
+            # Start a background task that turns active_get off before
+            # delayed_ping runs.
+            async def flip_inactive():
+                await asyncio.sleep(0.001)  # 1ms < 10ms interval
+                self.active_get = False
+
+            asyncio.create_task(flip_inactive())
+
+            # Wait long enough for delayed_ping to attempt to run (and skip),
+            # then return payload so _handle_get completes.
+            await asyncio.sleep(0.03)
+            return b"payload"
+
+    session = Sess()
+
+    captured = {}
+
+    async def fake_send_response(status, body, headers=None):
+        captured["status"] = status
+        captured["body"] = body
+        captured["headers"] = headers
+
+    consumer.send_response = fake_send_response  # type: ignore[assignment]
+
+    await consumer._handle_get(session)
+
+    # delayed_ping should have skipped, so no ping enqueued / marked
+    assert session.enqueued == []
+    assert session.mark_ping_called is False
+
+    # still returns a normal response
+    assert captured["status"] == 200
+    assert captured["body"] == b"payload"
 
 
 # --------------------------------------------------------------------------- #

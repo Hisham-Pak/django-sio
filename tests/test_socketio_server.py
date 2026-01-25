@@ -237,6 +237,39 @@ async def test_dispatch_event_branches():
 
 
 @pytest.mark.asyncio
+async def test_dispatch_event_no_handler_sends_echo_ack():
+    """
+    Cover the branch:
+
+        if handler is None:
+            ...
+            if ack_cb is not None:
+                await ack_cb(*args)
+
+    by providing an ack callback and ensuring it is called with the same args.
+    """
+    server = SocketIOServer()
+
+    # Ensure the namespace exists, but do NOT register a handler for "nope".
+    server.of("/nsp")
+
+    class Sock:
+        namespace = "/nsp"
+        id = "sock-ack-echo"
+
+    sock = Sock()
+
+    ack_calls = []
+
+    async def ack_cb(*args):
+        ack_calls.append(args)
+
+    await server._dispatch_event(sock, "nope", [1, "x", {"k": 2}], ack_cb)
+
+    assert ack_calls == [(1, "x", {"k": 2})]
+
+
+@pytest.mark.asyncio
 async def test_on_client_disconnect_and_force_disconnect():
     server = SocketIOServer()
 
