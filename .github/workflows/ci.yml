@@ -93,3 +93,35 @@ jobs:
 
       - name: Run tox env
         run: uv run tox -e ${{ matrix.toxenv }}
+  
+  codecov:
+    name: Upload coverage to Codecov
+    needs: tox
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Run tests with coverage
+        run: |
+          uv run pytest --cov=. --cov-report=xml:coverage.xml
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: Pytest Coverage Comment
+        uses: MishaKav/pytest-coverage-comment@main
+        with:
+          pytest-coverage-path: coverage.xml
