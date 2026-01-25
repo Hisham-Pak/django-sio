@@ -182,6 +182,7 @@ async def test_destroy_session_removes_session_from_registry():
     # Calling again must not raise (pop with default None)
     await destroy_session(sid)
 
+
 @pytest.mark.asyncio
 async def test_http_next_payload_empty_payload_parts(monkeypatch):
     """

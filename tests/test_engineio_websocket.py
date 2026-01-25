@@ -923,7 +923,9 @@ async def test_ws_receive_binary_ping_sends_binary_pong(monkeypatch):
             self.session = sess
 
     monkeypatch.setattr(ws_mod, "get_engineio_app", lambda: DummyApp())
-    monkeypatch.setattr(ws_mod, "get_or_create_socket", lambda sess: DummySocket(sess))
+    monkeypatch.setattr(
+        ws_mod, "get_or_create_socket", lambda sess: DummySocket(sess)
+    )
 
     # Force decode to produce a binary ping
     monkeypatch.setattr(
@@ -939,7 +941,9 @@ async def test_ws_receive_binary_ping_sends_binary_pong(monkeypatch):
 
     consumer._send_binary_packet = fake_send_binary_packet  # type: ignore[assignment]
 
-    await consumer.receive(text_data="2")  # value irrelevant; decode is patched
+    await consumer.receive(
+        text_data="2"
+    )  # value irrelevant; decode is patched
 
     assert sent == [("3", b"\x01\x02")]
 
@@ -974,7 +978,9 @@ async def test_ws_receive_ignores_unknown_packet_type(monkeypatch):
             self.session = sess
 
     monkeypatch.setattr(ws_mod, "get_engineio_app", lambda: DummyApp())
-    monkeypatch.setattr(ws_mod, "get_or_create_socket", lambda sess: DummySocket(sess))
+    monkeypatch.setattr(
+        ws_mod, "get_or_create_socket", lambda sess: DummySocket(sess)
+    )
 
     # Return an unhandled type (e.g. "9")
     monkeypatch.setattr(

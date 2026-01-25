@@ -41,7 +41,10 @@ def test_engineio_constants_reflect_django_settings():
     assert const_mod.PING_TIMEOUT_MS == 5678
     assert const_mod.MAX_PAYLOAD_BYTES == 999_999
 
-def test_get_setting_returns_default_when_django_settings_is_none(caplog, monkeypatch):
+
+def test_get_setting_returns_default_when_django_settings_is_none(
+    caplog, monkeypatch
+):
     monkeypatch.setattr(const_mod, "django_settings", None)
 
     value = const_mod._get_setting("SIO_ENGINEIO_PING_INTERVAL_MS", 25_000)
@@ -49,7 +52,9 @@ def test_get_setting_returns_default_when_django_settings_is_none(caplog, monkey
     assert value == 25_000
 
 
-def test_get_setting_returns_default_when_django_settings_not_configured(caplog, monkeypatch):
+def test_get_setting_returns_default_when_django_settings_not_configured(
+    caplog, monkeypatch
+):
     fake_settings = SimpleNamespace(configured=False)
     monkeypatch.setattr(const_mod, "django_settings", fake_settings)
 
