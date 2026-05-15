@@ -32,8 +32,9 @@ class LiveMessageConsumer(SocketIOConsumer):
 
     async def connect(self, socket, auth):
         """
-        Called when the client sends a Socket.IO CONNECT for this namespace. On
-        connect, join the live_message room and send the current state.
+        Called when the client sends a Socket.IO CONNECT for this namespace.
+
+        On connect, join the live_message room and send the current state.
 
         Return True to accept, False to reject.
 

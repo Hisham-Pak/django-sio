@@ -27,6 +27,7 @@ async def test_create_action_broadcasts_state(
     - trigger a new 'live_state' broadcast with the new count.
 
     """
+
     async with live_client(live_server_url, transport=transport) as (
         sio,
         states,

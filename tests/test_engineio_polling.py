@@ -175,7 +175,6 @@ async def test_polling_handle_405_for_unknown_method(monkeypatch):
     When method is neither GET nor POST, but sid and session exist, handle()
     should return 405 Method not allowed.
     """
-
     # Create a real session so get_session(sid) works.
     session = await create_session()
 
@@ -685,7 +684,7 @@ async def test_handle_get_delayed_ping_skips_when_inactive(monkeypatch):
     """
     Cover the delayed_ping() early-return branch:
 
-        if session.closed or not session.active_get: ... return
+    if session.closed or not session.active_get: ... return
 
     We force delayed_ping to be scheduled, then flip active_get False before it
     executes.

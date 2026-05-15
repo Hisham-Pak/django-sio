@@ -86,3 +86,7 @@ wrap-descriptions = 79
 pre-summary-newline = true
 make-summary-multi-line = true
 blank = true
+
+exclude = [
+  "docs"  # docformatter==1.7.8 fails with this directory.
+]
