@@ -1187,6 +1187,9 @@ async def test_ws_receive_flushes_http_queue_on_upgrade(monkeypatch):
         async def on_message(self, socket, data, binary):
             pass
 
+        async def on_transport_upgrade(self, socket):
+            pass
+
         async def on_connect(self, socket):
             pass
 

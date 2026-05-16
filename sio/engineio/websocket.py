@@ -310,6 +310,12 @@ class EngineIOWebSocketConsumer(AsyncWebsocketConsumer):
             # Switch primary transport to WebSocket
             self.session.transport = "websocket"
 
+            logger.debug(
+                "Calling app.on_transport_upgrade sid=%s",
+                self.session.sid,
+            )
+            await app.on_transport_upgrade(get_or_create_socket(self.session))
+
             # Flush any pending HTTP long-polling queue segments to the
             # WebSocket
             if self.session.websocket is self:

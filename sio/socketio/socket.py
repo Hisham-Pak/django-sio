@@ -187,6 +187,43 @@ class NamespaceSocket:
             )
             await ws.channel_layer.group_add(group, ws.channel_name)
 
+    async def sync_channel_groups(self) -> None:
+        """
+        Re-add all remembered rooms to the Channels group layer.
+
+        This is needed after polling -> websocket upgrade, because a socket may
+        have joined rooms while no websocket existed yet.
+        """
+        session = self.eio._session
+        ws = session.websocket
+
+        if ws is None or ws.channel_layer is None:
+            logger.debug(
+                """
+                NamespaceSocket.sync_channel_groups skipped socket.id=%s ns=%s
+                ws=%s channel_layer=%s
+                """,
+                self.id,
+                self.namespace,
+                ws is not None,
+                bool(ws.channel_layer) if ws is not None else False,
+            )
+            return
+
+        for room in list(self.rooms):
+            group = self.server._group_name(self.namespace, room)
+            logger.debug(
+                """
+                Syncing room to websocket channel group socket.id=%s ns=%s
+                room=%s group=%s
+                """,
+                self.id,
+                self.namespace,
+                room,
+                group,
+            )
+            await ws.channel_layer.group_add(group, ws.channel_name)
+
     async def leave(self, room: str) -> None:
         if room not in self.rooms:
             logger.debug(

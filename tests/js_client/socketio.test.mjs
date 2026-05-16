@@ -90,7 +90,7 @@ describe("django-sio JS client integration", function () {
         });
       });
 
-      it.skip("sends a live_action and receives updated state", function (done) {
+      it("sends a live_action and receives updated state", function (done) {
         const socket = makeSocket();
         const finish = withCleanup([socket], done);
 
@@ -205,7 +205,7 @@ describe("django-sio JS client integration", function () {
       // 3. live_action: create + delete + unknown
       // ------------------------------------------------------------------
 
-      it.skip("create increments count and includes new message", function (done) {
+      it("create increments count and includes new message", function (done) {
         const socket = makeSocket();
         const finish = withCleanup([socket], done);
 
@@ -255,7 +255,7 @@ describe("django-sio JS client integration", function () {
         });
       });
 
-      it.skip("create and delete via live_action updates state correctly", function (done) {
+      it("create and delete via live_action updates state correctly", function (done) {
         const socket = makeSocket();
         const finish = withCleanup([socket], done);
 

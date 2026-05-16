@@ -128,6 +128,12 @@ class EngineIOApplication:
     async def on_connect(self, socket: EngineIOSocket) -> None:
         logger.info("EngineIOApplication.on_connect sid=%s", socket.sid)
 
+    async def on_transport_upgrade(self, socket: EngineIOSocket) -> None:
+        logger.info(
+            "EngineIOApplication.on_transport_upgrade sid=%s",
+            socket.sid,
+        )
+
     async def on_message(
         self,
         socket: EngineIOSocket,

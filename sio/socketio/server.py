@@ -204,6 +204,21 @@ class SocketIOServer(EngineIOApplication):
         logger.info("SocketIOServer.on_connect sid=%s", eio_socket.sid)
         self._parsers[eio_socket.sid] = SocketIOParser()
 
+    async def on_transport_upgrade(self, eio_socket: EngineIOSocket) -> None:
+        """
+        Called when an Engine.IO session upgrades from polling to websocket.
+
+        Any Socket.IO rooms joined during polling must now be attached to the
+        websocket's Channels groups.
+        """
+        sid = eio_socket.sid
+
+        logger.debug("SocketIOServer.on_transport_upgrade sid=%s", sid)
+
+        for (eio_id, _nsp_name), ns_socket in list(self._sockets.items()):
+            if eio_id == sid:
+                await ns_socket.sync_channel_groups()
+
     async def on_message(
         self,
         eio_socket: EngineIOSocket,

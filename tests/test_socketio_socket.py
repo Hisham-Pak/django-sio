@@ -164,6 +164,92 @@ async def test_join_leave_without_websocket_or_channel_layer():
 
 
 @pytest.mark.asyncio
+async def test_sync_channel_groups_adds_existing_rooms_after_websocket_upgrade():
+    """
+    sync_channel_groups() should attach all already-joined logical rooms to the
+    websocket Channels groups after polling -> websocket upgrade.
+    """
+    server = DummyServer()
+    eio = DummyEio()
+
+    class DummyLayer:
+        def __init__(self):
+            self.added = []
+
+        async def group_add(self, group, channel_name):
+            self.added.append((group, channel_name))
+
+    class DummyWS:
+        def __init__(self):
+            self.channel_layer = DummyLayer()
+            self.channel_name = "chan-sync"
+
+    eio._session.websocket = DummyWS()
+
+    sock = NamespaceSocket(
+        server=server,
+        eio=eio,
+        namespace="/nsp",
+        id="sock-sync",
+    )
+
+    # These rooms were logically joined earlier, for example during polling.
+    sock.rooms.update({"room1", "room2"})
+
+    await sock.sync_channel_groups()
+
+    assert set(eio._session.websocket.channel_layer.added) == {
+        ("sio_nsp_room1", "chan-sync"),
+        ("sio_nsp_room2", "chan-sync"),
+    }
+
+
+@pytest.mark.asyncio
+async def test_sync_channel_groups_skips_when_no_websocket_or_no_channel_layer():
+    """
+    Cover this branch in NamespaceSocket.sync_channel_groups():
+
+        if ws is None or ws.channel_layer is None:
+            ...
+            return
+
+    It should safely return without adding any Channels group.
+    """
+    server = DummyServer()
+    eio = DummyEio()
+
+    sock = NamespaceSocket(
+        server=server,
+        eio=eio,
+        namespace="/nsp",
+        id="sock-sync-skip",
+    )
+
+    # Room already exists logically, but there is no websocket yet.
+    sock.rooms.add("room1")
+
+    # Case 1: ws is None
+    eio._session.websocket = None
+
+    await sock.sync_channel_groups()
+
+    # Logical room should remain untouched.
+    assert sock.rooms == {"room1"}
+
+    # Case 2: ws exists, but ws.channel_layer is None
+    class DummyWSNoChannelLayer:
+        channel_layer = None
+        channel_name = "chan-no-layer"
+
+    eio._session.websocket = DummyWSNoChannelLayer()
+
+    await sock.sync_channel_groups()
+
+    # Still no error, and logical room remains untouched.
+    assert sock.rooms == {"room1"}
+
+
+@pytest.mark.asyncio
 async def test_handle_event_and_ack_from_client():
     server = DummyServer()
     eio = DummyEio()

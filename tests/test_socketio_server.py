@@ -132,6 +132,39 @@ async def test_engineio_hooks_on_connect_message_disconnect():
 
 
 @pytest.mark.asyncio
+async def test_on_transport_upgrade_syncs_matching_namespace_sockets():
+    """
+    on_transport_upgrade() should call sync_channel_groups() for all
+    NamespaceSocket objects that belong to the upgraded Engine.IO sid only.
+    """
+    server = SocketIOServer()
+
+    sess = EngineIOSession("sid-upgrade")
+    eio = EngineIOSocket(sess)
+
+    calls = []
+
+    class DummyNamespaceSocket:
+        def __init__(self, label: str):
+            self.label = label
+
+        async def sync_channel_groups(self):
+            calls.append(self.label)
+
+    # Same Engine.IO sid, two namespaces: both should be synced.
+    server._sockets[(eio.sid, "/")] = DummyNamespaceSocket("default")
+    server._sockets[(eio.sid, "/chat")] = DummyNamespaceSocket("chat")
+
+    # Different Engine.IO sid: should NOT be synced.
+    server._sockets[("other-sid", "/")] = DummyNamespaceSocket("other")
+
+    await server.on_transport_upgrade(eio)
+
+    assert set(calls) == {"default", "chat"}
+    assert "other" not in calls
+
+
+@pytest.mark.asyncio
 async def test_create_namespace_socket_and_connect_handler_branches():
     server = SocketIOServer()
     nsp = server.of("/auth")
