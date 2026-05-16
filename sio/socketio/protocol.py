@@ -11,6 +11,8 @@ from .constants import (
     SIO_ACK,
     SIO_BINARY_ACK,
     SIO_BINARY_EVENT,
+    SIO_CONNECT,
+    SIO_DISCONNECT,
     SIO_EVENT,
 )
 
@@ -288,13 +290,30 @@ class SocketIOParser:
 
         if rest.startswith("/"):
             idx = rest.find(",")
+
             if idx == -1:
-                logger.warning(
-                    "Malformed namespace in Socket.IO packet: %r", text
-                )
-                return []
-            namespace = rest[:idx] or DEFAULT_NAMESPACE
-            rest = rest[idx + 1 :]
+                # Namespace-only packets are valid only for packet types that
+                # do not require payload, e.g.:
+                #   0/custom  -> CONNECT namespace /custom
+                #   1/custom  -> DISCONNECT namespace /custom
+                #
+                # But an EVENT like:
+                #   2/chat
+                # is malformed because EVENT requires a JSON array payload:
+                #   2/chat,["event", ...]
+                if p_type in (SIO_CONNECT, SIO_DISCONNECT):
+                    namespace = rest or DEFAULT_NAMESPACE
+                    rest = ""
+                else:
+                    logger.warning(
+                        "Malformed namespace in Socket.IO packet: %r",
+                        text,
+                    )
+                    return []
+            else:
+                namespace = rest[:idx] or DEFAULT_NAMESPACE
+                rest = rest[idx + 1 :]
+
         pkt.namespace = namespace
 
         # Next, if remaining starts with digits, that's ack id

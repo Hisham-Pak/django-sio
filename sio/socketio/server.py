@@ -286,14 +286,14 @@ class SocketIOServer(EngineIOApplication):
 
         if namespace is None:
             logger.warning(
-                "Unknown namespace %s for incoming packet type=%s sid=%s",
+                "Invalid namespace %s for incoming packet type=%s sid=%s",
                 nsp_name,
                 pkt.type,
                 eio_socket.sid,
             )
             if pkt.type == SIO_CONNECT:
                 await self._send_connect_error(
-                    eio_socket, nsp_name, {"message": "Unknown namespace"}
+                    eio_socket, nsp_name, {"message": "Invalid namespace"}
                 )
             return
 
@@ -479,7 +479,7 @@ class SocketIOServer(EngineIOApplication):
         if not namespace:
             logger.warning(
                 """
-                Event for unknown namespace socket.id=%s namespace=%s event=%s
+                Event for invalid namespace socket.id=%s namespace=%s event=%s
                 """,
                 socket.id,
                 socket.namespace,

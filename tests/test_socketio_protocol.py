@@ -7,6 +7,8 @@ from sio.socketio.constants import (
     SIO_ACK,
     SIO_BINARY_ACK,
     SIO_BINARY_EVENT,
+    SIO_CONNECT,
+    SIO_DISCONNECT,
     SIO_EVENT,
 )
 from sio.socketio.protocol import (
@@ -147,6 +149,30 @@ def test_parser_binary_event_full_flow_and_unexpected_binary_and_text():
     assert isinstance(pkt.data, list)
     assert pkt.data[0] == "bin"
     assert pkt.data[1]["buf"] == b"\x10\x20\x30"
+
+
+def test_parser_accepts_namespace_only_connect_packet():
+    parser = SocketIOParser()
+
+    packets = parser.feed_eio_message("0/custom", binary=False)
+
+    assert len(packets) == 1
+    pkt = packets[0]
+    assert pkt.type == SIO_CONNECT
+    assert pkt.namespace == "/custom"
+    assert pkt.data is None
+
+
+def test_parser_accepts_namespace_only_disconnect_packet():
+    parser = SocketIOParser()
+
+    packets = parser.feed_eio_message("1/custom", binary=False)
+
+    assert len(packets) == 1
+    pkt = packets[0]
+    assert pkt.type == SIO_DISCONNECT
+    assert pkt.namespace == "/custom"
+    assert pkt.data is None
 
 
 def test_parser_malformed_text_is_ignored_or_yields_none_data():

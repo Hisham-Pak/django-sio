@@ -499,7 +499,7 @@ describe("Socket.IO protocol", () => {
       assert.strictEqual(authPacket.data, '42/custom,["auth",{"token":"abc"}]');
     });
 
-    it.skip("should disallow connection to an unknown namespace", async () => {
+    it("should disallow connection to an unknown namespace", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
@@ -535,7 +535,7 @@ describe("Socket.IO protocol", () => {
   });
 
   describe("disconnect", () => {
-    it.skip("should disconnect from the main namespace", async () => {
+    it("should disconnect from the main namespace", async () => {
       const socket = await initSocketIOConnection();
 
       socket.send("41");
@@ -545,7 +545,7 @@ describe("Socket.IO protocol", () => {
       assert.strictEqual(data, "2");
     });
 
-    it.skip("should connect then disconnect from a custom namespace", async () => {
+    it("should connect then disconnect from a custom namespace", async () => {
       const socket = await initSocketIOConnection();
 
       await waitFor(socket, "message"); // ping
