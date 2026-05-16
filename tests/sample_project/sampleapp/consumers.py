@@ -86,12 +86,12 @@ class LiveMessageConsumer(SocketIOConsumer):
             msg_id = payload.get("id")
             await self._delete_message(msg_id)
 
-        # After any action, broadcast current state to everyone in the room
-        await self._broadcast_current_state(socket)
-
         # Optional: send an ack back to the caller
         if ack is not None:
             await ack({"status": "ok"})
+
+        # After any action, broadcast current state to everyone in the room
+        await self._broadcast_current_state(socket)
 
     # ------------------------------------------------------------------ #
     # Test helper events for JS client coverage

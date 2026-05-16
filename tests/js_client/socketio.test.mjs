@@ -334,7 +334,7 @@ describe("django-sio JS client integration", function () {
         });
       });
 
-      it.skip("unknown live_action is a no-op but still acknowledges ok", function (done) {
+      it("unknown live_action is a no-op but still acknowledges ok", function (done) {
         const socket = makeSocket();
         const finish = withCleanup([socket], done);
 
