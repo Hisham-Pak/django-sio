@@ -164,7 +164,7 @@ async def test_join_leave_without_websocket_or_channel_layer():
 
 
 @pytest.mark.asyncio
-async def test_sync_channel_groups_adds_existing_rooms_after_websocket_upgrade():
+async def test_sync_channel_groups_adds_existing_rooms_after_ws_upgrade():
     """
     sync_channel_groups() should attach all already-joined logical rooms to the
     websocket Channels groups after polling -> websocket upgrade.
@@ -205,15 +205,14 @@ async def test_sync_channel_groups_adds_existing_rooms_after_websocket_upgrade()
 
 
 @pytest.mark.asyncio
-async def test_sync_channel_groups_skips_when_no_websocket_or_no_channel_layer():
+async def test_sync_channel_groups_skips_when_no_ws_or_no_channel_layer():
     """
     Cover this branch in NamespaceSocket.sync_channel_groups():
 
-        if ws is None or ws.channel_layer is None:
-            ...
-            return
+    if ws is None or ws.channel_layer is None:     ...     return
 
     It should safely return without adding any Channels group.
+
     """
     server = DummyServer()
     eio = DummyEio()

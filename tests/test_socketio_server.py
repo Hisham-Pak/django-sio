@@ -211,6 +211,7 @@ async def test_connect_handler_emits_are_deferred_until_after_connect_packet():
 
     The Socket.IO CONNECT response is sent first. The buffered connect-handler
     events are flushed in a scheduled task after the current receive cycle.
+
     """
     import asyncio
 
@@ -245,7 +246,8 @@ async def test_connect_handler_emits_are_deferred_until_after_connect_packet():
 
     assert ns_socket is not None
 
-    # Immediately after _create_namespace_socket(), only CONNECT should be sent.
+    # Immediately after _create_namespace_socket(), only CONNECT should be
+    # sent.
     assert len(sent) == 1
     assert sent[0].startswith("0")
     assert '"sid"' in sent[0]
@@ -261,12 +263,11 @@ async def test_flush_connect_buffered_packets_skips_closed_session():
     """
     Cover this branch in SocketIOServer._flush_connect_buffered_packets():
 
-        if ns_socket.eio._session.closed:
-            ...
-            return
+    if ns_socket.eio._session.closed:     ...     return
 
     If the Engine.IO session is already closed, buffered connect-handler
     packets must not be written.
+
     """
     server = SocketIOServer()
 
@@ -309,8 +310,9 @@ async def test_flush_connect_buffered_packets_logs_exception_on_write_error():
     """
     Cover this branch in SocketIOServer._flush_connect_buffered_packets():
 
-        except Exception:
-            logger.exception(...)
+    except Exception:
+        logger.exception(...)
+
     """
     server = SocketIOServer()
 

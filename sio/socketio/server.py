@@ -358,7 +358,8 @@ class SocketIOServer(EngineIOApplication):
         except Exception:
             logger.exception(
                 """
-                Error while flushing connect-buffered packets socket.id=%s ns=%s
+                Error while flushing connect-buffered packets socket.id=%s
+                ns=%s
                 """,
                 ns_socket.id,
                 ns_socket.namespace,
