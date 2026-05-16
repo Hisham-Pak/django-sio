@@ -205,6 +205,151 @@ async def test_create_namespace_socket_and_connect_handler_branches():
 
 
 @pytest.mark.asyncio
+async def test_connect_handler_emits_are_deferred_until_after_connect_packet():
+    """
+    Events emitted inside connect_handler must be buffered.
+
+    The Socket.IO CONNECT response is sent first. The buffered connect-handler
+    events are flushed in a scheduled task after the current receive cycle.
+    """
+    import asyncio
+
+    server = SocketIOServer()
+    nsp = server.of(DEFAULT_NAMESPACE)
+
+    @nsp.on_connect
+    async def connect_handler(sock, auth):
+        await sock.emit("auth", auth or {})
+        return True
+
+    sess = EngineIOSession("sid-connect-order")
+    eio = EngineIOSocket(sess)
+
+    sent = []
+    second_packet_sent = asyncio.Event()
+
+    async def fake_send_text(payload: str):
+        sent.append(payload)
+        if len(sent) >= 2:
+            second_packet_sent.set()
+
+    eio._send_text = fake_send_text  # type: ignore[assignment]
+
+    pkt = SocketIOPacket(
+        type=SIO_CONNECT,
+        namespace=DEFAULT_NAMESPACE,
+        data={"token": "123"},
+    )
+
+    ns_socket = await server._create_namespace_socket(eio, nsp, pkt)
+
+    assert ns_socket is not None
+
+    # Immediately after _create_namespace_socket(), only CONNECT should be sent.
+    assert len(sent) == 1
+    assert sent[0].startswith("0")
+    assert '"sid"' in sent[0]
+
+    # The buffered auth event is flushed by the scheduled task.
+    await asyncio.wait_for(second_packet_sent.wait(), timeout=0.2)
+
+    assert sent[1] == '2["auth",{"token":"123"}]'
+
+
+@pytest.mark.asyncio
+async def test_flush_connect_buffered_packets_skips_closed_session():
+    """
+    Cover this branch in SocketIOServer._flush_connect_buffered_packets():
+
+        if ns_socket.eio._session.closed:
+            ...
+            return
+
+    If the Engine.IO session is already closed, buffered connect-handler
+    packets must not be written.
+    """
+    server = SocketIOServer()
+
+    class DummySession:
+        closed = True
+
+    class DummyEio:
+        def __init__(self):
+            self._session = DummySession()
+
+    class DummyNamespaceSocket:
+        id = "sock-closed"
+        namespace = "/"
+
+        def __init__(self):
+            self.eio = DummyEio()
+            self.write_calls = []
+
+        async def _write_packet(self, pkt):
+            self.write_calls.append(pkt)
+            raise AssertionError("_write_packet should not be called")
+
+    ns_socket = DummyNamespaceSocket()
+
+    packets = [
+        SocketIOPacket(
+            type=SIO_EVENT,
+            namespace=DEFAULT_NAMESPACE,
+            data=["auth", {}],
+        )
+    ]
+
+    await server._flush_connect_buffered_packets(ns_socket, packets)
+
+    assert ns_socket.write_calls == []
+
+
+@pytest.mark.asyncio
+async def test_flush_connect_buffered_packets_logs_exception_on_write_error():
+    """
+    Cover this branch in SocketIOServer._flush_connect_buffered_packets():
+
+        except Exception:
+            logger.exception(...)
+    """
+    server = SocketIOServer()
+
+    class DummySession:
+        closed = False
+
+    class DummyEio:
+        def __init__(self):
+            self._session = DummySession()
+
+    class DummyNamespaceSocket:
+        id = "sock-error"
+        namespace = "/"
+
+        def __init__(self):
+            self.eio = DummyEio()
+            self.write_calls = []
+
+        async def _write_packet(self, pkt):
+            self.write_calls.append(pkt)
+            raise RuntimeError("forced flush failure")
+
+    ns_socket = DummyNamespaceSocket()
+
+    packets = [
+        SocketIOPacket(
+            type=SIO_EVENT,
+            namespace=DEFAULT_NAMESPACE,
+            data=["auth", {}],
+        )
+    ]
+
+    # The method should swallow/log the exception, not raise it.
+    await server._flush_connect_buffered_packets(ns_socket, packets)
+
+    assert len(ns_socket.write_calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_handle_sio_packet_missing_namespace_or_connect(monkeypatch):
     server = SocketIOServer()
 

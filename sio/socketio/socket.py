@@ -43,17 +43,46 @@ class NamespaceSocket:
     _pending_acks: dict[int, AckCallback] = field(
         default_factory=dict, init=False
     )
+    _connect_buffer: list[SocketIOPacket] | None = field(
+        default=None, init=False
+    )
 
     # ------------------------------------------------------------------ #
     # Low-level send helpers
     # ------------------------------------------------------------------ #
 
     async def _send_packet(self, pkt: SocketIOPacket) -> None:
+        if self._connect_buffer is not None:
+            logger.debug(
+                """
+                Buffering packet during namespace connect socket.id=%s ns=%s
+                type=%s id=%s
+                """,
+                self.id,
+                self.namespace,
+                pkt.type,
+                pkt.id,
+            )
+            self._connect_buffer.append(pkt)
+            return
+
+        await self._write_packet(pkt)
+
+    async def _write_packet(self, pkt: SocketIOPacket) -> None:
+        """
+        Actually write a Socket.IO packet to Engine.IO.
+
+        This bypasses the connect-time buffer. Use this when the server must
+        force packet order, for example:
+
+            CONNECT packet first,
+            then buffered connect-handler emits.
+        """
         header, attachments = encode_packet_to_eio(pkt)
 
         logger.debug(
             """
-            NamespaceSocket._send_packet socket.id=%s ns=%s type=%s id=%s
+            NamespaceSocket._write_packet socket.id=%s ns=%s type=%s id=%s
             attachments=%d header_len=%d
             """,
             self.id,
@@ -64,10 +93,8 @@ class NamespaceSocket:
             len(header),
         )
 
-        # EngineIOSocket._send_text already wraps with EIO "4"
         await self.eio._send_text(header)
 
-        # Then attachments as binary Engine.IO messages "4<bytes>"
         for blob in attachments:
             logger.debug(
                 "Sending binary attachment socket.id=%s ns=%s bytes=%d",

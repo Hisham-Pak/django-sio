@@ -1,6 +1,7 @@
 # socketio/server.py
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import itertools
@@ -326,6 +327,43 @@ class SocketIOServer(EngineIOApplication):
 
         await ns_socket._handle_packet_from_client(pkt)
 
+    async def _flush_connect_buffered_packets(
+        self,
+        ns_socket: NamespaceSocket,
+        packets: list[SocketIOPacket],
+    ) -> None:
+        """
+        Flush packets that were emitted inside the namespace connect handler.
+
+        This runs after the Socket.IO CONNECT response has already been sent
+        and after the current websocket receive cycle has returned to the event
+        loop. This avoids sending connect-handler emits in the same immediate
+        receive cycle as the CONNECT response.
+        """
+        try:
+            if ns_socket.eio._session.closed:
+                logger.debug(
+                    """
+                    Skipping connect-buffer flush for closed session
+                    socket.id=%s ns=%s
+                    """,
+                    ns_socket.id,
+                    ns_socket.namespace,
+                )
+                return
+
+            for buffered_pkt in packets:
+                await ns_socket._write_packet(buffered_pkt)
+
+        except Exception:
+            logger.exception(
+                """
+                Error while flushing connect-buffered packets socket.id=%s ns=%s
+                """,
+                ns_socket.id,
+                ns_socket.namespace,
+            )
+
     async def _create_namespace_socket(
         self,
         eio_socket: EngineIOSocket,
@@ -349,28 +387,59 @@ class SocketIOServer(EngineIOApplication):
             auth_payload,
         )
 
-        if nsp.connect_handler is not None:
-            ok = await nsp.connect_handler(ns_socket, auth_payload)
-            logger.debug(
-                "Connect handler result namespace=%s sid=%s ok=%s",
-                nsp.name,
-                socket_id,
-                ok,
-            )
-            if not ok:
-                await self._send_connect_error(
-                    eio_socket,
-                    nsp.name,
-                    {"message": "Not authorized"},
+        buffered_packets: list[SocketIOPacket] = []
+        ns_socket._connect_buffer = buffered_packets
+
+        accepted = True
+
+        try:
+            if nsp.connect_handler is not None:
+                accepted = bool(
+                    await nsp.connect_handler(ns_socket, auth_payload)
                 )
-                return None
+
+                logger.debug(
+                    "Connect handler result namespace=%s sid=%s ok=%s",
+                    nsp.name,
+                    socket_id,
+                    accepted,
+                )
+        finally:
+            # Disable buffering before sending CONNECT and buffered packets.
+            ns_socket._connect_buffer = None
+
+        if not accepted:
+            await self._send_connect_error(
+                eio_socket,
+                nsp.name,
+                {"message": "Not authorized"},
+            )
+            return None
 
         resp = SocketIOPacket(
             type=SIO_CONNECT,
             namespace=nsp.name,
             data={"sid": socket_id},
         )
-        await ns_socket._send_packet(resp)
+
+        await ns_socket._write_packet(resp)
+
+        # Do not flush connect-handler emits in the same receive cycle.
+        # Schedule them for the next event-loop turn, without using an
+        # artificial time delay.
+        packets_to_flush = list(buffered_packets)
+
+        if packets_to_flush:
+            loop = asyncio.get_running_loop()
+            loop.call_soon(
+                lambda: asyncio.create_task(
+                    self._flush_connect_buffered_packets(
+                        ns_socket,
+                        packets_to_flush,
+                    )
+                )
+            )
+
         logger.info(
             "NamespaceSocket connected id=%s namespace=%s eio_sid=%s",
             socket_id,

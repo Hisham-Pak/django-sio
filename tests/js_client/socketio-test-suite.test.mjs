@@ -407,7 +407,7 @@ describe("Engine.IO protocol", () => {
 
 describe("Socket.IO protocol", () => {
   describe("connect", () => {
-    it.skip("should allow connection to the main namespace", async () => {
+    it("should allow connection to the main namespace", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
@@ -430,7 +430,7 @@ describe("Socket.IO protocol", () => {
       assert.strictEqual(authPacket.data, '42["auth",{}]');
     });
 
-    it.skip("should allow connection to the main namespace with a payload", async () => {
+    it("should allow connection to the main namespace with a payload", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
@@ -453,7 +453,7 @@ describe("Socket.IO protocol", () => {
       assert.strictEqual(authPacket.data, '42["auth",{"token":"123"}]');
     });
 
-    it.skip("should allow connection to a custom namespace", async () => {
+    it("should allow connection to a custom namespace", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitecustomsocket.io/?EIO=4&transport=websocket`,
       );
@@ -476,7 +476,7 @@ describe("Socket.IO protocol", () => {
       assert.strictEqual(authPacket.data, '42/custom,["auth",{}]');
     });
 
-    it.skip("should allow connection to a custom namespace with a payload", async () => {
+    it("should allow connection to a custom namespace with a payload", async () => {
       const socket = new WebSocket(
         `${WS_URL}/testsuitecustomsocket.io/?EIO=4&transport=websocket`,
       );
