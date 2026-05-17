@@ -706,6 +706,49 @@ async def test_on_message_processes_all_packets(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_on_message_closes_socket_when_parser_has_protocol_error():
+    server = get_socketio_server()
+
+    class DummyEioSocket:
+        def __init__(self, sid: str):
+            self.sid = sid
+            self.close_calls: list[str] = []
+
+        async def close(self, reason: str = "server_close") -> None:
+            self.close_calls.append(reason)
+
+    class DummyParser:
+        protocol_error = "Malformed Socket.IO packet"
+
+        def __init__(self):
+            self.calls = []
+
+        def feed_eio_message(self, data, binary):
+            self.calls.append((data, binary))
+            return []
+
+    eio_socket = DummyEioSocket("eio-protocol-error")
+    parser = DummyParser()
+    server._parsers[eio_socket.sid] = parser
+
+    orig_handle = server._handle_sio_packet
+
+    async def fake_handle_sio_packet(eio, pkt):
+        raise AssertionError("_handle_sio_packet should not be called")
+
+    server._handle_sio_packet = fake_handle_sio_packet  # type: ignore[assignment]
+
+    try:
+        await server.on_message(eio_socket, "bad-payload", False)
+
+        assert parser.calls == [("bad-payload", False)]
+        assert eio_socket.close_calls == ["bad_packet"]
+    finally:
+        server._handle_sio_packet = orig_handle
+        server._parsers.pop(eio_socket.sid, None)
+
+
+@pytest.mark.asyncio
 async def test_emit_room_filters_by_namespace_room_and_transport(monkeypatch):
     """
     For room-based emit, the local fallback loop should:

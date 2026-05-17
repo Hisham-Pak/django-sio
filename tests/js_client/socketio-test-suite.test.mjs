@@ -35,23 +35,74 @@ function waitFor(socket, eventType) {
   });
 }
 
-function waitForPackets(socket, count) {
-  const packets = [];
+function createMessageReader(socket, { autoPong = false } = {}) {
+  const queue = [];
+  const waiters = [];
 
-  return new Promise((resolve) => {
-    const handler = (event) => {
-      if (event.data === "2") {
-        // ignore PING packets
+  socket.addEventListener("message", (event) => {
+    if (autoPong && event.data === "2") {
+      socket.send("3");
+    }
+
+    for (let i = 0; i < waiters.length; i++) {
+      const waiter = waiters[i];
+
+      if (waiter.predicate(event)) {
+        waiters.splice(i, 1);
+        waiter.resolve(event);
         return;
       }
-      packets.push(event.data);
-      if (packets.length === count) {
-        socket.removeEventListener("message", handler);
-        resolve(packets);
-      }
-    };
-    socket.addEventListener("message", handler);
+    }
+
+    queue.push(event);
   });
+
+  async function next(predicate = () => true) {
+    for (let i = 0; i < queue.length; i++) {
+      const event = queue[i];
+
+      if (predicate(event)) {
+        queue.splice(i, 1);
+        return event;
+      }
+    }
+
+    return new Promise((resolve) => {
+      waiters.push({ predicate, resolve });
+    });
+  }
+
+  return {
+    next,
+    nextNonPing() {
+      return next((event) => event.data !== "2");
+    },
+    nextPing() {
+      return next((event) => event.data === "2");
+    },
+    async nextPackets(count) {
+      const packets = [];
+
+      while (packets.length < count) {
+        const event = await next((event) => event.data !== "2");
+        packets.push(event.data);
+      }
+
+      return packets;
+    },
+  };
+}
+
+function getMessageReader(socket, options = {}) {
+  if (!socket.__sioMessageReader) {
+    socket.__sioMessageReader = createMessageReader(socket, options);
+  }
+
+  return socket.__sioMessageReader;
+}
+
+function waitForPackets(socket, count) {
+  return getMessageReader(socket, { autoPong: true }).nextPackets(count);
 }
 
 function assertHasAllKeys(obj, ...keys) {
@@ -74,12 +125,14 @@ async function initSocketIOConnection() {
   );
   socket.binaryType = "arraybuffer";
 
-  await waitFor(socket, "message"); // Engine.IO handshake
+  const reader = getMessageReader(socket, { autoPong: true });
+
+  await reader.nextNonPing(); // Engine.IO handshake
 
   socket.send("40");
 
-  await waitFor(socket, "message"); // Socket.IO handshake
-  await waitFor(socket, "message"); // "auth" packet
+  await reader.nextNonPing(); // Socket.IO handshake
+  await reader.nextNonPing(); // "auth" packet
 
   return socket;
 }
@@ -412,11 +465,13 @@ describe("Socket.IO protocol", () => {
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
 
-      await waitFor(socket, "message"); // Engine.IO handshake
+      const reader = getMessageReader(socket, { autoPong: true });
+
+      await reader.nextNonPing(); // Engine.IO handshake
 
       socket.send("40");
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextNonPing();
 
       assert.ok(data.startsWith("40"));
 
@@ -425,7 +480,7 @@ describe("Socket.IO protocol", () => {
       assertHasAllKeys(handshake, "sid");
       assert.strictEqual(typeof handshake.sid, "string");
 
-      const authPacket = await waitFor(socket, "message");
+      const authPacket = await reader.nextNonPing();
 
       assert.strictEqual(authPacket.data, '42["auth",{}]');
     });
@@ -435,11 +490,13 @@ describe("Socket.IO protocol", () => {
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
 
-      await waitFor(socket, "message"); // Engine.IO handshake
+      const reader = getMessageReader(socket, { autoPong: true });
+
+      await reader.nextNonPing(); // Engine.IO handshake
 
       socket.send('40{"token":"123"}');
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextNonPing();
 
       assert.ok(data.startsWith("40"));
 
@@ -448,7 +505,7 @@ describe("Socket.IO protocol", () => {
       assertHasAllKeys(handshake, "sid");
       assert.strictEqual(typeof handshake.sid, "string");
 
-      const authPacket = await waitFor(socket, "message");
+      const authPacket = await reader.nextNonPing();
 
       assert.strictEqual(authPacket.data, '42["auth",{"token":"123"}]');
     });
@@ -458,11 +515,13 @@ describe("Socket.IO protocol", () => {
         `${WS_URL}/testsuitecustomsocket.io/?EIO=4&transport=websocket`,
       );
 
-      await waitFor(socket, "message"); // Engine.IO handshake
+      const reader = getMessageReader(socket, { autoPong: true });
+
+      await reader.nextNonPing(); // Engine.IO handshake
 
       socket.send("40/custom,");
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextNonPing();
 
       assert.ok(data.startsWith("40/custom,"));
 
@@ -471,7 +530,7 @@ describe("Socket.IO protocol", () => {
       assertHasAllKeys(handshake, "sid");
       assert.strictEqual(typeof handshake.sid, "string");
 
-      const authPacket = await waitFor(socket, "message");
+      const authPacket = await reader.nextNonPing();
 
       assert.strictEqual(authPacket.data, '42/custom,["auth",{}]');
     });
@@ -481,11 +540,13 @@ describe("Socket.IO protocol", () => {
         `${WS_URL}/testsuitecustomsocket.io/?EIO=4&transport=websocket`,
       );
 
-      await waitFor(socket, "message"); // Engine.IO handshake
+      const reader = getMessageReader(socket, { autoPong: true });
+
+      await reader.nextNonPing(); // Engine.IO handshake
 
       socket.send('40/custom,{"token":"abc"}');
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextNonPing();
 
       assert.ok(data.startsWith("40/custom,"));
 
@@ -494,7 +555,7 @@ describe("Socket.IO protocol", () => {
       assertHasAllKeys(handshake, "sid");
       assert.strictEqual(typeof handshake.sid, "string");
 
-      const authPacket = await waitFor(socket, "message");
+      const authPacket = await reader.nextNonPing();
 
       assert.strictEqual(authPacket.data, '42/custom,["auth",{"token":"abc"}]');
     });
@@ -504,11 +565,13 @@ describe("Socket.IO protocol", () => {
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
 
-      await waitFor(socket, "message"); // Engine.IO handshake
+      const reader = getMessageReader(socket, { autoPong: true });
+
+      await reader.nextNonPing(); // Engine.IO handshake
 
       socket.send("40/random");
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextNonPing();
 
       assert.strictEqual(data, '44/random,{"message":"Invalid namespace"}');
     });
@@ -518,7 +581,9 @@ describe("Socket.IO protocol", () => {
         `${WS_URL}/testsuitesocket.io/?EIO=4&transport=websocket`,
       );
 
-      await waitFor(socket, "message"); // Engine.IO handshake
+      const reader = getMessageReader(socket, { autoPong: true });
+
+      await reader.nextNonPing(); // Engine.IO handshake
 
       socket.send("4abc");
 
@@ -537,28 +602,28 @@ describe("Socket.IO protocol", () => {
   describe("disconnect", () => {
     it("should disconnect from the main namespace", async () => {
       const socket = await initSocketIOConnection();
+      const reader = getMessageReader(socket);
 
       socket.send("41");
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextPing();
 
       assert.strictEqual(data, "2");
     });
 
     it("should connect then disconnect from a custom namespace", async () => {
       const socket = await initSocketIOConnection();
-
-      await waitFor(socket, "message"); // ping
+      const reader = getMessageReader(socket);
 
       socket.send("40/custom");
 
-      await waitFor(socket, "message"); // Socket.IO handshake
-      await waitFor(socket, "message"); // auth packet
+      await reader.nextNonPing(); // Socket.IO handshake
+      await reader.nextNonPing(); // auth packet
 
       socket.send("41/custom");
       socket.send('42["message","message to main namespace"]');
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextNonPing();
 
       assert.strictEqual(
         data,
@@ -570,10 +635,11 @@ describe("Socket.IO protocol", () => {
   describe("message", () => {
     it("should send a plain-text packet", async () => {
       const socket = await initSocketIOConnection();
+      const reader = getMessageReader(socket);
 
       socket.send('42["message",1,"2",{"3":[true]}]');
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextNonPing();
 
       assert.strictEqual(data, '42["message-back",1,"2",{"3":[true]}]');
     });
@@ -601,10 +667,11 @@ describe("Socket.IO protocol", () => {
 
     it("should send a plain-text packet with an ack", async () => {
       const socket = await initSocketIOConnection();
+      const reader = getMessageReader(socket);
 
       socket.send('42456["message-with-ack",1,"2",{"3":[false]}]');
 
-      const { data } = await waitFor(socket, "message");
+      const { data } = await reader.nextNonPing();
 
       assert.strictEqual(data, '43456[1,"2",{"3":[false]}]');
     });

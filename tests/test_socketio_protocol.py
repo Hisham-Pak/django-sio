@@ -175,22 +175,24 @@ def test_parser_accepts_namespace_only_disconnect_packet():
     assert pkt.data is None
 
 
-def test_parser_malformed_text_is_ignored_or_yields_none_data():
+def test_parser_malformed_text_is_ignored_and_sets_protocol_error():
     parser = SocketIOParser()
 
-    # Non-digit first char → ignored
+    # Non-digit first char → ignored, but marked as protocol error
     assert parser.feed_eio_message("x", binary=False) == []
+    assert parser.protocol_error == "Malformed Socket.IO packet"
 
-    # Binary type with malformed attachments header → ignored
+    # Binary type with malformed attachments header → ignored, but marked
     assert parser.feed_eio_message("5bad", binary=False) == []
+    assert parser.protocol_error == "Malformed binary packet header"
 
-    # Namespace without comma → ignored
+    # Namespace without comma for EVENT → ignored, but marked
     assert parser.feed_eio_message("2/chat", binary=False) == []
+    assert parser.protocol_error == "Malformed namespace in Socket.IO packet"
 
-    # Invalid JSON: data becomes None but packet still returned
-    packets = parser.feed_eio_message('2["evt",]', binary=False)
-    assert len(packets) == 1
-    assert packets[0].data is None
+    # Invalid JSON → ignored, but marked
+    assert parser.feed_eio_message('2["evt",]', binary=False) == []
+    assert parser.protocol_error == "Invalid Socket.IO JSON payload"
 
 
 def test_socketio_packet_is_binary_helper():

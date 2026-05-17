@@ -232,6 +232,17 @@ class SocketIOServer(EngineIOApplication):
             return
 
         packets = parser.feed_eio_message(data, binary)
+
+        protocol_error = getattr(parser, "protocol_error", None)
+        if protocol_error is not None:
+            logger.warning(
+                "Malformed Socket.IO packet, closing sid=%s error=%s",
+                eio_socket.sid,
+                protocol_error,
+            )
+            await eio_socket.close(reason="bad_packet")
+            return
+
         logger.debug(
             "on_message sid=%s produced %d Socket.IO packets",
             eio_socket.sid,

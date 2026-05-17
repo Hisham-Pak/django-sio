@@ -212,6 +212,7 @@ class SocketIOParser:
 
     def __init__(self):
         self._binary_accum: _BinaryAccum | None = None
+        self.protocol_error: str | None = None
         logger.debug("SocketIOParser created")
 
     def feed_eio_message(
@@ -223,6 +224,8 @@ class SocketIOParser:
         Feed one Engine.IO message (already stripped of its "4"/binary header)
         and return any completed Socket.IO packets.
         """
+        self.protocol_error = None
+
         logger.debug(
             "SocketIOParser.feed_eio_message binary=%s len=%d",
             binary,
@@ -249,6 +252,9 @@ class SocketIOParser:
                 """
             )
             self._binary_accum = None
+            self.protocol_error = (
+                "Unexpected text frame while waiting for binary attachments"
+            )
             return []
 
         first = text[0]
@@ -260,6 +266,7 @@ class SocketIOParser:
                 """,
                 first,
             )
+            self.protocol_error = "Malformed Socket.IO packet"
             return []
 
         p_type = int(first)
@@ -281,6 +288,7 @@ class SocketIOParser:
                 rest = rest[i:]
             else:
                 logger.warning("Malformed binary packet header: %r", text)
+                self.protocol_error = "Malformed binary packet header"
                 return []
 
         # Now parse namespace if present
@@ -309,6 +317,9 @@ class SocketIOParser:
                         "Malformed namespace in Socket.IO packet: %r",
                         text,
                     )
+                    self.protocol_error = (
+                        "Malformed namespace in Socket.IO packet"
+                    )
                     return []
             else:
                 namespace = rest[:idx] or DEFAULT_NAMESPACE
@@ -335,7 +346,9 @@ class SocketIOParser:
                 logger.warning(
                     "JSON decode error in Socket.IO packet: %r", rest
                 )
-                json_data = None
+                self.protocol_error = "Invalid Socket.IO JSON payload"
+                return []
+
         pkt.data = json_data
 
         # If binary packet, we now need attachments
@@ -366,6 +379,9 @@ class SocketIOParser:
     def _handle_binary_attachment(self, data: bytes) -> list[SocketIOPacket]:
         if self._binary_accum is None:
             logger.warning(
+                "Unexpected binary attachment with no pending binary packet"
+            )
+            self.protocol_error = (
                 "Unexpected binary attachment with no pending binary packet"
             )
             return []
