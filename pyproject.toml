@@ -1,6 +1,6 @@
 [project]
 name = "django-sio"
-version = "0.1.0"
+version = "0.2.0"
 description = "SocketIO for Django"
 readme = "README.md"
 requires-python = ">=3.8"

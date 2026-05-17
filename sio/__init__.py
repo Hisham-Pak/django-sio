@@ -3,7 +3,7 @@ import logging
 
 from .consumer import SocketIOConsumer
 
-__version__ = "v0.1.0"
+__version__ = "v0.2.0"
 
 logger = logging.getLogger("sio." + __name__)
 logger.info(
