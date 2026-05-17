@@ -25,3 +25,9 @@ exclude_patterns = []
 
 html_theme = "alabaster"
 html_static_path = ["_static"]
+html_theme_options = {
+    'github_user': 'Hisham-Pak',
+    'github_repo': 'django-sio',
+    'github_button': True,
+    'github_type': 'star',
+}
